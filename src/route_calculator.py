@@ -31,6 +31,7 @@ class RouteCalculator:
 
         return accelerations
     
+    
     def calculate_slope(self, distances: np.ndarray, elevations: np.ndarray) -> np.ndarray:
         """Berechnet die Steigung aus den GPS-Daten."""
 
@@ -43,4 +44,17 @@ class RouteCalculator:
                 slopes[i] = (elevations[i] - elevations[i - 1]) / distance
 
         return slopes
-        
+    
+
+    def median_filter(self,values: np.ndarray, window_size: int = 5,) -> np.ndarray:
+        """Entfernt einzelne Ausreißer mit einem Medianfilter."""
+        return (pd.Series(values).rolling(window=window_size,center=True,min_periods=1,).median().to_numpy()
+    )
+
+
+    def moving_average(self,values: np.ndarray,window_size: int = 5,) -> np.ndarray:
+        """Glättet Werte mit einem gleitenden Mittelwert."""
+        return (pd.Series(values).rolling( window=window_size,center=True,min_periods=1,).mean().to_numpy()
+    )
+
+    
