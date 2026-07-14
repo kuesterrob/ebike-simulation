@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 
 from src.gps_reader import GPSReader
+from src.route_calculator import RouteCalculator
 
 
 PROJECT_DIRECTORY = Path(__file__).resolve().parent
@@ -32,6 +33,16 @@ def main() -> None:
     for x in distances:
         total_dist = np.append(total_dist, total_dist[-1] + x)
 
+    zeitdeltas = df["time"].diff().dt.total_seconds().to_numpy()
+
+    route_calculator = RouteCalculator()
+    speeds = route_calculator.calculate_speed(zeitdeltas, distances)
+    accelerations = route_calculator.calculate_acceleration(zeitdeltas, speeds)
+    slopes = route_calculator.calculate_slope(distances, df["ele"].to_numpy())
+
+    plotte(zeitdeltas, speeds, titel="Geschwindigkeit", x_label="Zeit", y_label="Geschwindigkeit [m/s]")
+    plotte(zeitdeltas, accelerations, titel="Beschleunigung", x_label="Zeit", y_label="Beschleunigung [m/s²]")
+    plotte(zeitdeltas, slopes, titel="Steigung", x_label="Zeit", y_label="Steigung [m/m]")
 
     plotte(zeit, total_dist)
     
