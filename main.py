@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from src.gps_reader import GPSReader
 from src.route_calculator import RouteCalculator
 from src.motor import Motor
+from src.lipo_battery import LiPoBatteryPack
+from src.nmc_battery import NMCBatteryPack
 
 
 PROJECT_DIRECTORY = Path(__file__).resolve().parent
@@ -126,6 +128,35 @@ def main() -> None:
         titel="Zurückgelegte Strecke",
         x_label="Zeit",
         y_label="Strecke [m]",
+    )
+
+    lipo = LiPoBatteryPack(capacity_nom_Ah=50.0, internal_resistance_mOhm=80.0, initial_soc=1.0, Vmin=32.0, Vmax=42.0)
+    nmc = NMCBatteryPack(capacity_nom_Ah=50.0, internal_resistance_mOhm=70.0, initial_soc=1.0, Vmin=32.0, Vmax=42.0)
+    v_lipo = []
+    v_nmc = []
+
+    for i in range(0,len(motor_currents)):
+        current = motor_currents[i]
+        time = zeitdeltas[i]
+        lipo.apply_current(current=current, duration=time)
+        v_lipo.append(lipo.voltage(current=current))
+        nmc.apply_current(current=current, duration = time)
+        v_nmc.append(nmc.voltage(current=current))
+
+    plotte(
+        zeit[1:],
+        v_lipo,
+        titel="LiPo Batteriespannung",
+        x_label="Zeit",
+        y_label="Spannung [V]",
+    )
+
+    plotte(
+        zeit[1:],
+        v_nmc,
+        titel="NMC Batteriespannung",
+        x_label="Zeit",
+        y_label="Spannung [V]",
     )
 
 

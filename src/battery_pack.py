@@ -1,4 +1,4 @@
-from battery_base import BatteryBase
+from src.battery_base import BatteryBase
 import logging
 
 
@@ -8,9 +8,9 @@ class BatteryPack(BatteryBase):
         capacity_nom_Ah: float,
         internal_resistance_mOhm: float = 80.0,
         initial_soc: float = 1.0,
-        parallel_cells: int = 1,
         Vmin: float = 3.0,
         Vmax: float = 4.2,
+        parallel_cells: int = 1,
         
     ):
         error = False
@@ -43,7 +43,7 @@ class BatteryPack(BatteryBase):
             dsoc = -(current * duration) / self.C_nom  
             self.soc = max(0.0, min(self.soc + dsoc, 1.0))
             error = False
-            if self.soc < 0.0:
+            if self.soc <= 0.0:
                 logging.warning("SoC is below 0.0, battery is empty.")
                 error = True
             if self.soc > 1.0:
@@ -51,6 +51,7 @@ class BatteryPack(BatteryBase):
                 error = True
             if error:
                 raise ValueError("SoC is out of bounds.")
+            logging.warning(f"Applied current: {current} A for {duration} s. New SoC: {self.soc:.2f}")
 
     def voltage(self, current: float = 0.0) -> float:
         open_circuit_voltage = self.Vmin + self.soc * (self.Vmax - self.Vmin)
