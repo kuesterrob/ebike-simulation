@@ -1,4 +1,3 @@
 numpy
-Pandas 
-pathlib
-math
+pandas 
+matplotlib
