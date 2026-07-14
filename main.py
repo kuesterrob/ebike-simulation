@@ -35,14 +35,27 @@ def main() -> None:
 
     zeitdeltas = df["time"].diff().dt.total_seconds().to_numpy()
 
+    print(zeitdeltas)
+    
+
     route_calculator = RouteCalculator()
     speeds = route_calculator.calculate_speed(zeitdeltas, distances)
     accelerations = route_calculator.calculate_acceleration(zeitdeltas, speeds)
     slopes = route_calculator.calculate_slope(distances, df["ele"].to_numpy())
 
+    print(speeds)
+    print(accelerations)
+
+    print(len(slopes))
+    zeitdeltas = zeitdeltas[1:]
+    speeds = speeds[1:]
+    accelerations = accelerations[1:]
+
+    slope_in_deegrees = np.degrees(np.arctan(slopes))
+
     plotte(zeitdeltas, speeds, titel="Geschwindigkeit", x_label="Zeit", y_label="Geschwindigkeit [m/s]")
     plotte(zeitdeltas, accelerations, titel="Beschleunigung", x_label="Zeit", y_label="Beschleunigung [m/s²]")
-    plotte(zeitdeltas, slopes, titel="Steigung", x_label="Zeit", y_label="Steigung [m/m]")
+    plotte(zeitdeltas, slope_in_deegrees, titel="Steigung", x_label="Zeit", y_label="Steigung [°]")
 
     plotte(zeit, total_dist)
     
