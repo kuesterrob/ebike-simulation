@@ -142,6 +142,7 @@ def show_results(
                 results=results,
                 plot_name=plot_name,
             )
+            
 
             plt.show()
 

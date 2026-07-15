@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 
 
 def get_plot_definitions(
@@ -184,6 +185,9 @@ def create_figure(
     axis.set_xlabel(x_label)
     axis.set_ylabel(y_label)
     axis.grid(True)
+    axis.xaxis.set_major_locator(mdates.MinuteLocator(byminute=[0, 30]))
+    axis.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
+    axis.xaxis.set_minor_locator(mdates.MinuteLocator(byminute=[10, 20, 40, 50]))
 
     if len(series) > 1:
         axis.legend()
