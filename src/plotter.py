@@ -38,9 +38,6 @@ def get_plot_definitions(
                 "Ungefiltert": (
                     route["raw_acceleration_mps2"]
                 ),
-                "Gefiltert": (
-                    route["acceleration_mps2"]
-                ),
             },
             "x_label": "Zeit",
             "y_label": "Beschleunigung [m/s²]",
@@ -61,11 +58,11 @@ def get_plot_definitions(
             "x": time["all"],
             "series": {
                 "Strecke": (
-                    route["total_distance_m"]
+                    route["total_distance_m"] * (10 ** -3)
                 ),
             },
             "x_label": "Zeit",
-            "y_label": "Strecke [m]",
+            "y_label": "Strecke [km]",
         },
 
         "Antriebskraft": {
