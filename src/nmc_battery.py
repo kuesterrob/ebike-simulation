@@ -17,4 +17,4 @@ class NMCBatteryPack(BatteryPack):
             open_circuit_voltage = self.Vmin + (self.soc**0.834) * (self.Vmax - self.Vmin)
             return open_circuit_voltage - self.R_int * current
         else:
-            return self.Vmin + (self.soc**0.3) * (self.Vmax - self.Vmin)
+            return self.Vmin + (self.soc**0.834) * (self.Vmax - self.Vmin)
