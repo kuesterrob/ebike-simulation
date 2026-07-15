@@ -66,15 +66,11 @@ class BikeSimulator:
 
         distances = reader.calculate_distances()
 
-<<<<<<< HEAD
+        time = dataframe["time"].to_numpy(dtype="datetime64[ms]")
+
         time = dataframe[
             "time"
         ].to_numpy(
-=======
-        dataframe["time"] = dataframe["time"].dt.tz_convert("Europe/Vienna")
-
-        time = dataframe["time"].to_numpy(
->>>>>>> da8dc3ba4b5f7b636ebab9aab6c122ef982a0a26
             dtype="datetime64[ms]"
 
         )
