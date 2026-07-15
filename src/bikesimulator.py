@@ -66,6 +66,7 @@ class BikeSimulator:
             .dt.total_seconds()
             .to_numpy()
         )
+        time_deltas = time_deltas[1:] # Der erste Wert ist NaN.
 
         total_distance = np.concatenate(
             ([0.0], np.cumsum(distances))
@@ -74,57 +75,26 @@ class BikeSimulator:
         # Route
         route_calculator = RouteCalculator()
 
-        raw_speeds = route_calculator.calculate_speed(
+        speeds = route_calculator.calculate_speed(
             time_deltas,
             distances,
         )
 
-        speeds = route_calculator.median_filter(
-            raw_speeds,
-            window_size=self.filter_window,
-        )
-
-        raw_accelerations = (
+        accelerations = (
             route_calculator.calculate_acceleration(
                 time_deltas,
                 speeds,
             )
         )
 
-        accelerations = route_calculator.moving_average(
-            raw_accelerations,
-            window_size=self.filter_window,
-        )
-
         elevations = dataframe["ele"].to_numpy(
             dtype=float
         )
 
-        filtered_elevations = (
-            route_calculator.median_filter(
-                elevations,
-                window_size=self.filter_window,
-            )
-        )
-
         slopes = route_calculator.calculate_slope(
             distances,
-            filtered_elevations,
+            elevations,
         )
-
-        slopes = route_calculator.moving_average(
-            slopes,
-            window_size=self.filter_window,
-        )
-
-        # Der erste Wert von time_deltas ist NaN.
-        # Er wird deshalb zusammen mit den dazugehörigen
-        # Routenwerten entfernt.
-        time_deltas = time_deltas[1:]
-        raw_speeds = raw_speeds[1:]
-        speeds = speeds[1:]
-        raw_accelerations = raw_accelerations[1:]
-        accelerations = accelerations[1:]
 
         interval_time = time[1:]
 
@@ -319,12 +289,12 @@ class BikeSimulator:
                 "total_distance_m": total_distance,
                 "elevation_m": elevations,
                 "filtered_elevation_m": (
-                    filtered_elevations
+                    elevations
                 ),
-                "raw_speed_mps": raw_speeds,
+                "raw_speed_mps": speeds,
                 "speed_mps": speeds,
                 "raw_acceleration_mps2": (
-                    raw_accelerations
+                    accelerations
                 ),
                 "acceleration_mps2": accelerations,
                 "slope": slopes,

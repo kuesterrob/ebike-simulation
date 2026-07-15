@@ -19,34 +19,6 @@ class RouteCalculator:
             else:
                 raise ValueError(f"Zeitdifferenz darf nicht null oder kleiner sein. Index: {i}, Zeitdifferenz: {delta_time}")
 
-        #Filterung von GPS Rauschen mittels Durchschnitt der umliegenden Werte  
-        threshholdfactor = 2.0  
-        for speed in range(0, len(speeds)):
-            if speed == 0:
-                avg = sum(speeds[speed + 1], speeds[speed + 2]) / 2 # Berechnung des Mittelwerts der umliegenden Werte
-                if speeds[speed] > threshholdfactor * avg:  #Überschreitung des Mittelwerts mal dem Faktor
-                    speeds[speed] = avg
-                elif speeds[speed] < avg / threshholdfactor:  #Unterschreitung des Mittelwerts durch den Faktor
-                    speeds[speed] = avg
-                else:
-                    continue
-            if speed == 1:
-                avg = sum(speeds[speed + 1], speeds[speed + 2], speeds[speed - 1]) / 3 # Berechnung des Mittelwerts der umliegenden Werte
-                if speeds[speed] > threshholdfactor * avg:  #Überschreitung des Mittelwerts mal dem Faktor
-                    speeds[speed] = avg
-                elif speeds[speed] < avg / threshholdfactor:  #Unterschreitung des Mittelwerts durch den Faktor
-                    speeds[speed] = avg
-                else:
-                    continue
-            if speed >= 2:
-                avg = sum(speeds[speed + 1], speeds[speed + 2], speeds[speed - 1],speeds[speed - 2]) / 4 # Berechnung des Mittelwerts der umliegenden Werte
-                if speeds[speed] > threshholdfactor * avg:  #Überschreitung des Mittelwerts mal dem Faktor
-                    speeds[speed] = avg
-                elif speeds[speed] < avg / threshholdfactor:  #Unterschreitung des Mittelwerts durch den Faktor
-                    speeds[speed] = avg
-                else:
-                    continue
-
         return speeds
     
     def calculate_acceleration(self, timedeltas: np.ndarray, speeds: np.ndarray) -> np.ndarray:
@@ -67,6 +39,46 @@ class RouteCalculator:
             
             else:
                 raise ValueError(f"Zeitdifferenz darf nicht null oder kleiner sein. Index: {i}, Zeitdifferenz: {delta_time}")
+            
+            #Filterung von GPS Rauschen mittels Durchschnitt der umliegenden Werte  
+        threshholdfactor = 1.5  
+        for acceleration in range(0, len(accelerations)):
+            if accelerations[acceleration] > 3:
+                print(f"Warnung: Beschleunigung an Index {acceleration} ist größer als 3 m/s². Wert: {accelerations[acceleration]} m/s²")
+            if acceleration == 0:
+                avg = sum([accelerations[acceleration + 1], accelerations[acceleration + 2]]) / 2 # Berechnung des Mittelwerts der umliegenden Werte
+                if (accelerations[acceleration] > threshholdfactor * avg) or (accelerations[acceleration] < avg / threshholdfactor):  #Überschreitung des Mittelwerts mal dem Faktor oder Unterschreitung des Mittelwerts durch den Faktor
+                    accelerations[acceleration] = avg
+                else:
+                    continue
+
+            if acceleration == 1:
+                avg = sum([accelerations[acceleration + 1], accelerations[acceleration + 2], accelerations[acceleration - 1]]) / 3 # Berechnung des Mittelwerts der umliegenden Werte
+                if (accelerations[acceleration] > threshholdfactor * avg) or (accelerations[acceleration] < avg / threshholdfactor):  #Überschreitung des Mittelwerts mal dem Faktor oder Unterschreitung des Mittelwerts durch den Faktor
+                    accelerations[acceleration] = avg
+                else:
+                    continue
+
+            if acceleration >= 2 and acceleration <= len(accelerations) - 3:
+                avg = sum([accelerations[acceleration + 1], accelerations[acceleration + 2], accelerations[acceleration - 1], accelerations[acceleration - 2]]) / 4 # Berechnung des Mittelwerts der umliegenden Werte
+                if (accelerations[acceleration] > threshholdfactor * avg) or (accelerations[acceleration] < avg / threshholdfactor):  #Überschreitung des Mittelwerts mal dem Faktor oder Unterschreitung des Mittelwerts durch den Faktor
+                    accelerations[acceleration] = avg
+                else:
+                    continue
+
+            if acceleration == len(accelerations) - 2:
+                avg = sum([accelerations[acceleration - 1], accelerations[acceleration - 2], accelerations[acceleration + 1]]) / 3 # Berechnung des Mittelwerts der umliegenden Werte
+                if (accelerations[acceleration] > threshholdfactor * avg) or (accelerations[acceleration] < avg / threshholdfactor):  #Überschreitung des Mittelwerts mal dem Faktor oder Unterschreitung des Mittelwerts durch den Faktor
+                    accelerations[acceleration] = avg
+                else:
+                    continue
+
+            if acceleration == len(accelerations) - 1:
+                avg = sum([accelerations[acceleration - 1], accelerations[acceleration - 2]]) / 2 # Berechnung des Mittelwerts der umliegenden Werte
+                if (accelerations[acceleration] > threshholdfactor * avg) or (accelerations[acceleration] < avg / threshholdfactor):  #Überschreitung des Mittelwerts mal dem Faktor oder Unterschreitung des Mittelwerts durch den Faktor
+                    accelerations[acceleration] = avg
+                else:
+                    continue
 
         return accelerations
     
@@ -77,22 +89,11 @@ class RouteCalculator:
         slopes = np.zeros(len(distances), dtype=float)
 
         for i in range(0, len(distances)):
-
             if distances[i] > 0:
-                slopes[i] = (elevations[i] - elevations[i - 1]) / distances[i]
+                slopes[i] = (elevations[i+1] - elevations[i]) / distances[i]
 
         return slopes
+
     
-
-    def median_filter(self,values: np.ndarray, window_size: int = 5,) -> np.ndarray:
-        """Entfernt einzelne Ausreißer mit einem Medianfilter."""
-        return (pd.Series(values).rolling(window=window_size,center=True,min_periods=1,).median().to_numpy()
-    )
-
-
-    def moving_average(self,values: np.ndarray,window_size: int = 5,) -> np.ndarray:
-        """Glättet Werte mit einem gleitenden Mittelwert."""
-        return (pd.Series(values).rolling( window=window_size,center=True,min_periods=1,).mean().to_numpy()
-    )
 
     

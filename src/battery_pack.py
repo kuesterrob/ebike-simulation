@@ -51,7 +51,7 @@ class BatteryPack(BatteryBase):
                 error = True
             if error:
                 raise ValueError("SoC is out of bounds.")
-            logging.warning(f"Applied current: {current} A for {duration} s. New SoC: {self.soc:.2f}")
+
 
     def voltage(self, current: float = 0.0) -> float:
         open_circuit_voltage = self.Vmin + self.soc * (self.Vmax - self.Vmin)
