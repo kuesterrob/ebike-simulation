@@ -40,6 +40,8 @@ class BatteryPack(BatteryBase):
 
     def apply_current(self, current: float, duration: float) -> None:
         if current > 0:
+            if current > (self.voltage(current=current)/self.R_int):
+                raise ValueError(f"Current is higher than the maximum that can be provided by the battery")
             dsoc = -(current * duration) / self.C_nom  
             self.soc = max(0.0, min(self.soc + dsoc, 1.0))
             error = False
@@ -51,7 +53,8 @@ class BatteryPack(BatteryBase):
                 error = True
             if error:
                 raise ValueError("SoC is out of bounds.")
-
+        elif current < 0:
+            raise ValueError(f"Current is negative:{current:.2f}")
 
     def voltage(self, current: float = 0.0) -> float:
         open_circuit_voltage = self.Vmin + self.soc * (self.Vmax - self.Vmin)
