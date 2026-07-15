@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 from src.gps_reader import GPSReader
 from src.route_calculator import RouteCalculator
@@ -56,12 +57,10 @@ class BikeSimulator:
 
         distances = reader.calculate_distances()
 
+        dataframe["time"] = pd.to_datetime(dataframe["time"], utc=True)
         dataframe["time"] = dataframe["time"].dt.tz_convert("Europe/Vienna")
 
-        time = dataframe["time"].to_numpy(
-            dtype="datetime64[ms]"
-
-        )
+        time = dataframe["time"].dt.tz_localize(None).to_numpy()
 
         time_deltas = (
             dataframe["time"]
