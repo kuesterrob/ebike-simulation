@@ -1,4 +1,8 @@
+import logging
 import numpy as np
+
+
+logger = logging.getLogger(__name__)
 
 
 class Motor:
@@ -12,6 +16,32 @@ class Motor:
         motor_constant_nm_per_a: float = 1.5,
         air_density_kg_per_m3: float = 1.225,
     ) -> None:
+        
+        if total_mass_kg <= 0:
+            raise ValueError(
+                "Die Gesamtmasse muss größer als 0 sein."
+            )
+
+        if drag_area_m2 < 0:
+            raise ValueError(
+                "Die Luftwiderstandsfläche darf nicht "
+                "negativ sein."
+            )
+
+        if wheel_diameter_inch <= 0:
+            raise ValueError(
+                "Der Raddurchmesser muss größer als 0 sein."
+            )
+
+        if motor_constant_nm_per_a <= 0:
+            raise ValueError(
+                "Die Motorkonstante muss größer als 0 sein."
+            )
+
+        if air_density_kg_per_m3 <= 0:
+            raise ValueError(
+                "Die Luftdichte muss größer als 0 sein."
+            )
     
         self.total_mass_kg = total_mass_kg
         self.drag_area_m2 = drag_area_m2
@@ -38,6 +68,30 @@ class Motor:
         Berechnet die Motorgrößen aus den zuvor vom
         RouteCalculator bestimmten Fahrdaten.
         """
+
+        if not (
+            len(speeds)
+            == len(accelerations)
+            == len(slopes)
+        ):
+            raise ValueError(
+                "Geschwindigkeit, Beschleunigung und "
+                "Steigung müssen gleich viele Werte enthalten."
+            )
+
+        if len(speeds) == 0:
+            raise ValueError(
+                "Die Motordaten dürfen nicht leer sein."
+            )
+
+        if not (
+            np.all(np.isfinite(speeds))
+            and np.all(np.isfinite(accelerations))
+            and np.all(np.isfinite(slopes))
+        ):
+            raise ValueError(
+                "Die Motordaten enthalten ungültige Werte."
+            )
 
         # Kraft, die zur Beschleunigung von Fahrer und Fahrrad benötigt wird.
         acceleration_force = (
