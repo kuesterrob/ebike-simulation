@@ -10,11 +10,42 @@ class RouteCalculator:
 
         speeds = np.zeros(len(timedeltas), dtype=float)
 
-        for i in range(1, len(timedeltas)):
+        for i in range(0, len(timedeltas)):
             delta_time = timedeltas[i]
 
             if delta_time > 0:
-                speeds[i] = distances[i - 1] / delta_time
+                speeds[i] = distances[i] / delta_time
+
+            else:
+                raise ValueError(f"Zeitdifferenz darf nicht null oder kleiner sein. Index: {i}, Zeitdifferenz: {delta_time}")
+
+        #Filterung von GPS Rauschen mittels Durchschnitt der umliegenden Werte  
+        threshholdfactor = 2.0  
+        for speed in range(0, len(speeds)):
+            if speed == 0:
+                avg = sum(speeds[speed + 1], speeds[speed + 2]) / 2 # Berechnung des Mittelwerts der umliegenden Werte
+                if speeds[speed] > threshholdfactor * avg:  #Überschreitung des Mittelwerts mal dem Faktor
+                    speeds[speed] = avg
+                elif speeds[speed] < avg / threshholdfactor:  #Unterschreitung des Mittelwerts durch den Faktor
+                    speeds[speed] = avg
+                else:
+                    continue
+            if speed == 1:
+                avg = sum(speeds[speed + 1], speeds[speed + 2], speeds[speed - 1]) / 3 # Berechnung des Mittelwerts der umliegenden Werte
+                if speeds[speed] > threshholdfactor * avg:  #Überschreitung des Mittelwerts mal dem Faktor
+                    speeds[speed] = avg
+                elif speeds[speed] < avg / threshholdfactor:  #Unterschreitung des Mittelwerts durch den Faktor
+                    speeds[speed] = avg
+                else:
+                    continue
+            if speed >= 2:
+                avg = sum(speeds[speed + 1], speeds[speed + 2], speeds[speed - 1],speeds[speed - 2]) / 4 # Berechnung des Mittelwerts der umliegenden Werte
+                if speeds[speed] > threshholdfactor * avg:  #Überschreitung des Mittelwerts mal dem Faktor
+                    speeds[speed] = avg
+                elif speeds[speed] < avg / threshholdfactor:  #Unterschreitung des Mittelwerts durch den Faktor
+                    speeds[speed] = avg
+                else:
+                    continue
 
         return speeds
     
@@ -23,11 +54,19 @@ class RouteCalculator:
 
         accelerations = np.zeros(len(timedeltas), dtype=float)
 
-        for i in range(1, len(timedeltas)):
+        for i in range(0, len(timedeltas)):
             delta_time = timedeltas[i]
 
             if delta_time > 0:
-                accelerations[i] = (speeds[i] - speeds[i - 1]) / delta_time
+
+                if i == 0:
+                    accelerations[i] = speeds[i] / delta_time 
+
+                else:
+                    accelerations[i] = (speeds[i] - speeds[i - 1]) / delta_time
+            
+            else:
+                raise ValueError(f"Zeitdifferenz darf nicht null oder kleiner sein. Index: {i}, Zeitdifferenz: {delta_time}")
 
         return accelerations
     
@@ -37,11 +76,10 @@ class RouteCalculator:
 
         slopes = np.zeros(len(distances), dtype=float)
 
-        for i in range(1, len(distances)):
-            distance = distances[i - 1]
+        for i in range(0, len(distances)):
 
-            if distance > 0:
-                slopes[i] = (elevations[i] - elevations[i - 1]) / distance
+            if distances[i] > 0:
+                slopes[i] = (elevations[i] - elevations[i - 1]) / distances[i]
 
         return slopes
     
