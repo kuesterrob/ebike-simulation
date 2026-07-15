@@ -40,47 +40,26 @@ class RouteCalculator:
             else:
                 raise ValueError(f"Zeitdifferenz darf nicht null oder kleiner sein. Index: {i}, Zeitdifferenz: {delta_time}")
             
-            #Filterung von GPS Rauschen mittels Durchschnitt der umliegenden Werte  
-        threshholdfactor = 1.5  
-        for acceleration in range(0, len(accelerations)):
-            if accelerations[acceleration] > 3:
-                print(f"Warnung: Beschleunigung an Index {acceleration} ist größer als 3 m/s². Wert: {accelerations[acceleration]} m/s²")
-            if acceleration == 0:
-                avg = sum([accelerations[acceleration + 1], accelerations[acceleration + 2]]) / 2 # Berechnung des Mittelwerts der umliegenden Werte
-                if (accelerations[acceleration] > threshholdfactor * avg) or (accelerations[acceleration] < avg / threshholdfactor):  #Überschreitung des Mittelwerts mal dem Faktor oder Unterschreitung des Mittelwerts durch den Faktor
-                    accelerations[acceleration] = avg
-                else:
-                    continue
 
-            if acceleration == 1:
-                avg = sum([accelerations[acceleration + 1], accelerations[acceleration + 2], accelerations[acceleration - 1]]) / 3 # Berechnung des Mittelwerts der umliegenden Werte
-                if (accelerations[acceleration] > threshholdfactor * avg) or (accelerations[acceleration] < avg / threshholdfactor):  #Überschreitung des Mittelwerts mal dem Faktor oder Unterschreitung des Mittelwerts durch den Faktor
-                    accelerations[acceleration] = avg
-                else:
-                    continue
+        threshold_factor = 2.0
+        half_window = 5         # Anzahl der Nachbarwerte, die für den Vergleich herangezogen werden.
 
-            if acceleration >= 2 and acceleration <= len(accelerations) - 3:
-                avg = sum([accelerations[acceleration + 1], accelerations[acceleration + 2], accelerations[acceleration - 1], accelerations[acceleration - 2]]) / 4 # Berechnung des Mittelwerts der umliegenden Werte
-                if (accelerations[acceleration] > threshholdfactor * avg) or (accelerations[acceleration] < avg / threshholdfactor):  #Überschreitung des Mittelwerts mal dem Faktor oder Unterschreitung des Mittelwerts durch den Faktor
-                    accelerations[acceleration] = avg
-                else:
-                    continue
+        filtered = accelerations.copy() #Kopie der Werte erstellen, damit gegen die Originalwerte verglichen werden kann.
 
-            if acceleration == len(accelerations) - 2:
-                avg = sum([accelerations[acceleration - 1], accelerations[acceleration - 2], accelerations[acceleration + 1]]) / 3 # Berechnung des Mittelwerts der umliegenden Werte
-                if (accelerations[acceleration] > threshholdfactor * avg) or (accelerations[acceleration] < avg / threshholdfactor):  #Überschreitung des Mittelwerts mal dem Faktor oder Unterschreitung des Mittelwerts durch den Faktor
-                    accelerations[acceleration] = avg
-                else:
-                    continue
+        for i in range(len(accelerations)):
+            neighbors = []
+            for k in range(-half_window, half_window + 1):   #Nachbarliste erzeugen, wobei die Grenzen der Liste berücksichtigt werden.
+                if k != 0 and 0 <= i + k < len(accelerations):
+                    neighbors.append(accelerations[i + k])  
+            if not neighbors:                               #Abbrechen wenn keine Nachbarn vorhanden sind.
+                continue
 
-            if acceleration == len(accelerations) - 1:
-                avg = sum([accelerations[acceleration - 1], accelerations[acceleration - 2]]) / 2 # Berechnung des Mittelwerts der umliegenden Werte
-                if (accelerations[acceleration] > threshholdfactor * avg) or (accelerations[acceleration] < avg / threshholdfactor):  #Überschreitung des Mittelwerts mal dem Faktor oder Unterschreitung des Mittelwerts durch den Faktor
-                    accelerations[acceleration] = avg
-                else:
-                    continue
+            avg = sum(neighbors) / len(neighbors)
 
-        return accelerations
+            if accelerations[i] > threshold_factor * avg or accelerations[i] < avg / threshold_factor:
+                filtered[i] = avg
+
+        return filtered
     
     
     def calculate_slope(self, distances: np.ndarray, elevations: np.ndarray) -> np.ndarray:
