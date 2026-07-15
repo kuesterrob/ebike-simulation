@@ -69,9 +69,17 @@ class Motor:
 
         # Mechanische Motorleistung.
         power = total_force * speeds
+        for i in range(len(power)):
+            if power[i] < 0:
+                power[i] = 0.0
+                
 
         # Drehmoment am angetriebenen Rad.
         torque = total_force * self.wheel_radius_m
+        for i in range(len(torque)):
+            if torque[i] < 0:
+                torque[i] = 0.0
+                
 
         # Benötigter Motorstrom über die Motorkonstante.
         motor_current = (
