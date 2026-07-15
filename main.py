@@ -1,7 +1,6 @@
+import logging
 from pathlib import Path
-
 import matplotlib.pyplot as plt
-
 from src.bikesimulator import BikeSimulator
 from src.plotter import (
     create_result_figure,
@@ -18,7 +17,30 @@ GPS_FILE = (
 )
 
 
-def print_metrics(metrics: dict) -> None:
+logger = logging.getLogger(__name__)
+
+
+def configure_logging() -> None:
+    """Konfiguriert das Logging in der Konsole."""
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format=(
+            "%(asctime)s | "
+            "%(levelname)s | "
+            "%(name)s | "
+            "%(message)s"
+        ),
+        datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=[
+            logging.StreamHandler(),
+        ],
+    )
+
+
+def print_metrics(
+    metrics: dict,
+) -> None:
     """Gibt die wichtigsten Ergebnisse aus."""
 
     print("\n--- Routendaten ---")
@@ -93,31 +115,63 @@ def print_metrics(metrics: dict) -> None:
     )
 
 
-def show_results(results: dict) -> None:
-    """
-    Zeigt alle vorhandenen Diagramme nacheinander an.
-    """
+def show_results(
+    results: dict,
+) -> None:
+    """Zeigt alle vorhandenen Diagramme nacheinander an."""
 
-    plot_names = get_plot_names(results)
+    plot_names = get_plot_names(
+        results
+    )
+
+    logger.info(
+        "Bereite %d Ergebnisdiagramme vor",
+        len(plot_names),
+    )
 
     for plot_name in plot_names:
-        figure = create_result_figure(
-            results=results,
-            plot_name=plot_name,
-        )
+        figure = None
+        
+        try:
+            logger.info(
+                "Zeige Diagramm: %s",
+                plot_name,
+            )
 
-        # Das Programm wartet, bis das aktuelle
-        # Plot-Fenster geschlossen wurde.
-        plt.show()
+            figure = create_result_figure(
+                results=results,
+                plot_name=plot_name,
+            )
 
-        # Figur anschließend aus dem Speicher entfernen.
-        plt.close(figure)
+            plt.show()
+
+        except Exception as error:
+            raise RuntimeError(
+                f"Das Diagramm '{plot_name}' "
+                f"konnte nicht erstellt oder "
+                f"angezeigt werden."
+            ) from error
+
+        finally:
+            if figure is not None:
+                plt.close(figure)
 
 
-def main() -> None:
-    """Startet die E-Bike-Simulation."""
+def main() -> int:
+    """
+    Startet die E-Bike-Simulation.
+    """
 
-    print("E-Bike-Simulation wird gestartet ...")
+    configure_logging()
+
+    logger.info(
+        "E-Bike-Simulation gestartet"
+    )
+
+    logger.info(
+        "Verwendete GPS-Datei: %s",
+        GPS_FILE,
+    )
 
     try:
         simulator = BikeSimulator(
@@ -127,19 +181,61 @@ def main() -> None:
             filter_window=5,
         )
 
+        logger.info(
+            "BikeSimulator wurde initialisiert"
+        )
+
         results = simulator.run()
 
-    except (FileNotFoundError, ValueError) as error:
-        print(
-            f"Simulation fehlgeschlagen: {error}"
+        logger.info(
+            "Simulation erfolgreich abgeschlossen"
         )
-        return
 
-    print("Simulation erfolgreich abgeschlossen.")
+        print_metrics(
+            results["metrics"]
+        )
 
-    print_metrics(results["metrics"])
-    show_results(results)
+        show_results(results)
+
+    except FileNotFoundError as error:
+        logger.error(
+            "Benötigte Datei wurde nicht gefunden: %s",
+            error,
+        )
+
+        return 1
+
+    except ValueError as error:
+        logger.error(
+            "Ungültige Simulationsdaten: %s",
+            error,
+        )
+
+        return 1
+
+    except KeyboardInterrupt:
+        logger.warning(
+            "Simulation wurde durch den Benutzer abgebrochen"
+        )
+
+        return 130
+
+    except Exception:
+        # logger.exception gibt zusätzlich den vollständigen Traceback des unbekannten Fehlers aus.
+        logger.exception(
+            "Unerwarteter Programmfehler"
+        )
+
+        return 1
+
+    logger.info(
+        "Anwendung erfolgreich beendet"
+    )
+
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(
+        main()
+    )
