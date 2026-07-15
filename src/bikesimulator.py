@@ -1,5 +1,5 @@
+import logging
 from pathlib import Path
-
 import numpy as np
 import pandas as pd
 
@@ -10,10 +10,11 @@ from src.lipo_battery import LiPoBatteryPack
 from src.nmc_battery import NMCBatteryPack
 
 
+logger = logging.getLogger(__name__)
+
+
 class BikeSimulator:
-    """
-    Führt die komplette E-Bike-Simulation durch.
-    """
+    """Führt die komplette E-Bike-Simulation durch."""
 
     def __init__(
         self,
@@ -34,26 +35,36 @@ class BikeSimulator:
 
         if self.battery_capacity_ah <= 0:
             raise ValueError(
-                "Die Akkukapazität muss größer als 0 sein."
+                "Die Akkukapazität muss größer "
+                "als 0 sein."
             )
 
         if not 0 < self.initial_soc <= 1:
             raise ValueError(
-                "Der Ladezustand muss zwischen 0 und 1 liegen."
+                "Der Ladezustand muss zwischen "
+                "0 und 1 liegen."
             )
 
         if self.filter_window < 1:
             raise ValueError(
-                "Die Filtergröße muss mindestens 1 sein."
+                "Die Filtergröße muss mindestens "
+                "1 sein."
             )
 
     def run(self) -> dict:
         """Führt die Simulation aus."""
 
-        # GPS-Daten
+        logger.info(
+            "E-Bike-Simulation wird ausgeführt"
+        )
 
+    
+        # GPS-Daten
         reader = GPSReader()
-        dataframe = reader.load_file(self.gps_file)
+
+        dataframe = reader.load_file(
+            self.gps_file
+        )
 
         distances = reader.calculate_distances()
 
@@ -68,18 +79,25 @@ class BikeSimulator:
             .dt.total_seconds()
             .to_numpy()
         )
-        time_deltas = time_deltas[1:] # Der erste Wert ist NaN.
+
+        # Der erste Wert ist NaN.
+        time_deltas = time_deltas[1:]
 
         total_distance = np.concatenate(
-            ([0.0], np.cumsum(distances))
+            (
+                [0.0],
+                np.cumsum(distances),
+            )
         )
 
         # Route
         route_calculator = RouteCalculator()
 
-        speeds = route_calculator.calculate_speed(
-            time_deltas,
-            distances,
+        speeds = (
+            route_calculator.calculate_speed(
+                time_deltas,
+                distances,
+            )
         )
 
         accelerations = (
@@ -89,20 +107,42 @@ class BikeSimulator:
             )
         )
 
-        elevations = dataframe["ele"].to_numpy(
+        # Auffällige Beschleunigungswerte melden.
+        outlier_count = int(
+            np.sum(
+                np.abs(accelerations) > 3.0
+            )
+        )
+
+        if outlier_count > 0:
+            logger.warning(
+                "%d Beschleunigungswerte liegen "
+                "außerhalb von ±3 m/s²",
+                outlier_count,
+            )
+
+        elevations = dataframe[
+            "ele"
+        ].to_numpy(
             dtype=float
         )
 
-        slopes = route_calculator.calculate_slope(
-            distances,
-            elevations,
+        slopes = (
+            route_calculator.calculate_slope(
+                distances,
+                elevations,
+            )
         )
 
         interval_time = time[1:]
 
         slope_degrees = np.degrees(
             np.arcsin(
-                np.clip(slopes, -1.0, 1.0)
+                np.clip(
+                    slopes,
+                    -1.0,
+                    1.0,
+                )
             )
         )
 
@@ -130,12 +170,37 @@ class BikeSimulator:
             slopes=slopes,
         )
 
-        forces = motor_results["force_n"]
-        powers = motor_results["power_w"]
-        torques = motor_results["torque_nm"]
-        motor_currents = motor_results["current_a"]
+        forces = motor_results[
+            "force_n"
+        ]
+
+        powers = motor_results[
+            "power_w"
+        ]
+
+        torques = motor_results[
+            "torque_nm"
+        ]
+
+        motor_currents = motor_results[
+            "current_a"
+        ]
 
         # Negative Ströme werden nicht als Rekuperation verwendet.
+        negative_current_count = int(
+            np.sum(
+                motor_currents < 0
+            )
+        )
+
+        if negative_current_count > 0:
+            logger.info(
+                "%d negative Motorströme werden "
+                "wegen fehlender Rekuperation auf "
+                "0 A gesetzt",
+                negative_current_count,
+            )
+
         battery_currents = np.clip(
             motor_currents,
             0.0,
@@ -151,7 +216,9 @@ class BikeSimulator:
 
         # Akkus
         lipo = LiPoBatteryPack(
-            capacity_nom_Ah=self.battery_capacity_ah,
+            capacity_nom_Ah=(
+                self.battery_capacity_ah
+            ),
             internal_resistance_mOhm=80.0,
             initial_soc=self.initial_soc,
             Vmin=32.0,
@@ -159,7 +226,9 @@ class BikeSimulator:
         )
 
         nmc = NMCBatteryPack(
-            capacity_nom_Ah=self.battery_capacity_ah,
+            capacity_nom_Ah=(
+                self.battery_capacity_ah
+            ),
             internal_resistance_mOhm=70.0,
             initial_soc=self.initial_soc,
             Vmin=32.0,
@@ -187,11 +256,15 @@ class BikeSimulator:
             )
 
             lipo_voltages.append(
-                lipo.voltage(current=current)
+                lipo.voltage(
+                    current=current
+                )
             )
 
             nmc_voltages.append(
-                nmc.voltage(current=current)
+                nmc.voltage(
+                    current=current
+                )
             )
 
         lipo_voltages = np.asarray(
@@ -203,6 +276,23 @@ class BikeSimulator:
             nmc_voltages,
             dtype=float,
         )
+
+        # Ungültige Batteriespannungen erkennen.
+        if not np.all(
+            np.isfinite(lipo_voltages)
+        ):
+            raise ValueError(
+                "Die LiPo-Spannungen enthalten "
+                "ungültige Werte."
+            )
+
+        if not np.all(
+            np.isfinite(nmc_voltages)
+        ):
+            raise ValueError(
+                "Die NMC-Spannungen enthalten "
+                "ungültige Werte."
+            )
 
 
         # Kennzahlen
@@ -250,8 +340,12 @@ class BikeSimulator:
             "max_speed_kmh": float(
                 np.max(speeds) * 3.6
             ),
-            "ascent_m": float(reader.climb),
-            "descent_m": float(reader.descent),
+            "ascent_m": float(
+                reader.climb
+            ),
+            "descent_m": float(
+                reader.descent
+            ),
             "max_power_w": float(
                 np.max(positive_powers)
             ),
@@ -274,8 +368,17 @@ class BikeSimulator:
                 np.min(nmc_voltages)
             ),
         }
-        
 
+        logger.info(
+            "Simulation abgeschlossen: "
+            "%.2f km, LiPo-SOC %.1f %%, "
+            "NMC-SOC %.1f %%",
+            metrics["total_distance_km"],
+            metrics["lipo_soc_percent"],
+            metrics["nmc_soc_percent"],
+        )
+
+    
         # Ergebnisse zurückgeben
         return {
             "metrics": metrics,
@@ -288,7 +391,9 @@ class BikeSimulator:
 
             "route": {
                 "distance_m": distances,
-                "total_distance_m": total_distance,
+                "total_distance_m": (
+                    total_distance
+                ),
                 "elevation_m": elevations,
                 "filtered_elevation_m": (
                     elevations
@@ -298,9 +403,13 @@ class BikeSimulator:
                 "raw_acceleration_mps2": (
                     accelerations
                 ),
-                "acceleration_mps2": accelerations,
+                "acceleration_mps2": (
+                    accelerations
+                ),
                 "slope": slopes,
-                "slope_degrees": slope_degrees,
+                "slope_degrees": (
+                    slope_degrees
+                ),
             },
 
             "motor": {
@@ -314,8 +423,12 @@ class BikeSimulator:
             },
 
             "battery": {
-                "lipo_voltage_v": lipo_voltages,
-                "nmc_voltage_v": nmc_voltages,
+                "lipo_voltage_v": (
+                    lipo_voltages
+                ),
+                "nmc_voltage_v": (
+                    nmc_voltages
+                ),
                 "lipo_soc_percent": (
                     lipo.soc * 100.0
                 ),
