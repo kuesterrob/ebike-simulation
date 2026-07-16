@@ -283,43 +283,68 @@ class BatteryPack(BatteryBase):
         current: float,
         duration: float,
     ) -> None:
-        """Aktualisiert den Ladezustand des Akkus."""
+        """
+        Aktualisiert den Ladezustand des Akkus.
+
+        Positiver Strom:
+        Der Akku wird entladen.
+
+        Negativer Strom:
+        Der Akku wird geladen.
+        """
+
+        if duration < 0:
+            raise ValueError(
+                "Die Zeitdauer darf nicht negativ sein."
+            )
+
+        if duration == 0:
+            return
 
         if current > 0:
             internal_resistance = (
                 self.effective_internal_resistance()
             )
 
+            # Prüft, ob der angeforderte Entladestrom vom Akku geliefert werden kann.
             if current > (
-                self.voltage(current=current)
-                / internal_resistance
+                self.voltage(current=current) / internal_resistance
             ):
                 raise ValueError(
                     "Der Strom ist größer als der maximal "
                     "lieferbare Akkustrom."
                 )
 
-            # Änderung des Ladezustands:
-            # delta_SoC = -(I * delta_t) / C_nominal
-            dsoc = (
-                -(current * duration)
-                / self.C_nom
+        elif current < 0:
+            # Die Ladestromstärke wird für die Prüfung als positiver Betrag verwendet.
+            charge_current = -current
+
+            allowed_charge_current = (
+                self.maximum_charge_current(
+                    duration=duration
+                )
             )
 
-            self.soc = max(
-                0.0,
-                min(self.soc + dsoc, 1.0),
-            )
-
-            if self.soc <= 0.0:
-                logging.warning(
-                    "Der Akku ist leer."
+            if (
+                charge_current
+                > allowed_charge_current + 1e-9
+            ):
+                raise ValueError(
+                    "Der angeforderte Ladestrom ist "
+                    "größer als der aktuell erlaubte "
+                    "Ladestrom."
                 )
 
-        elif current < 0:
-            raise ValueError(
-                f"Der Strom darf nicht negativ sein: "
-                f"{current:.2f} A"
+        # Die SoC-Gleichung funktioniert für beide Stromrichtungen:
+        # I > 0 ergibt eine Abnahme des SoC.
+        # I < 0 ergibt eine Zunahme des SoC.
+        dsoc = ( -(current * duration)/ self.C_nom)
+
+        self.soc = max( 0.0,min(self.soc + dsoc, 1.0))
+
+        if current > 0 and self.is_empty():
+            logging.warning(
+                "Der Akku ist leer."
             )
 
     def voltage(
