@@ -19,6 +19,7 @@ def get_plot_definitions(
     route = results["route"]
     motor = results["motor"]
     battery = results["battery"]
+    environment = results["environment"]
 
     return {
         "Geschwindigkeit": {
@@ -52,6 +53,22 @@ def get_plot_definitions(
             },
             "x_label": "Zeit",
             "y_label": "Steigung [°]",
+        },
+
+                "Luftdichte": {
+            # Die Luftdichte wurde für jeden Streckenabschnitt berechnet. Deshalb werden die Intervallzeiten verwendet.
+            "x": time["intervals"],
+
+            "series": {
+                "Luftdichte": (
+                    environment[
+                        "air_density_kg_per_m3"
+                    ]
+                ),
+            },
+
+            "x_label": "Zeit",
+            "y_label": "Luftdichte [kg/m³]",
         },
 
         "Zurückgelegte Strecke": {
