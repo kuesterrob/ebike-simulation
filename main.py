@@ -190,6 +190,63 @@ def print_metrics(
         f"{metrics['max_nmc_battery_power_w']:.0f} W"
     )
 
+    print("\n--- Rekuperation ---")
+
+    print(
+        f"Mechanische Bremsenergie: "
+        f"{metrics['mechanical_braking_energy_wh']:.2f} Wh"
+    )
+
+    print(
+        f"Vom LiPo aufgenommene Energie: "
+        f"{metrics['lipo_recovered_energy_wh']:.2f} Wh"
+    )
+
+    print(
+        f"Vom NMC aufgenommene Energie: "
+        f"{metrics['nmc_recovered_energy_wh']:.2f} Wh"
+    )
+
+    print(
+        f"Im LiPo-Bremswiderstand dissipiert: "
+        f"{metrics['lipo_resistor_energy_wh']:.2f} Wh"
+    )
+
+    print(
+        f"Im NMC-Bremswiderstand dissipiert: "
+        f"{metrics['nmc_resistor_energy_wh']:.2f} Wh"
+    )
+
+    print(
+        f"Mechanische Bremsenergie bei LiPo: "
+        f"{metrics['lipo_friction_brake_energy_wh']:.2f} Wh"
+    )
+
+    print(
+        f"Mechanische Bremsenergie bei NMC: "
+        f"{metrics['nmc_friction_brake_energy_wh']:.2f} Wh"
+    )
+
+    print(
+        f"Maximale LiPo-Widerstandsleistung: "
+        f"{metrics['max_lipo_resistor_power_w']:.2f} W"
+    )
+
+    print(
+        f"Maximale NMC-Widerstandsleistung: "
+        f"{metrics['max_nmc_resistor_power_w']:.2f} W"
+    )
+
+    print(
+        f"Maximale LiPo-Widerstandstemperatur: "
+        f"{metrics['max_lipo_resistor_temperature_c']:.2f} °C"
+    )
+
+    print(
+        f"Maximale NMC-Widerstandstemperatur: "
+        f"{metrics['max_nmc_resistor_temperature_c']:.2f} °C"
+    )
+
 
 def show_results(
     results: dict,
