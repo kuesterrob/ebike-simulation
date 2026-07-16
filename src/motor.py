@@ -160,24 +160,55 @@ class Motor:
             + air_force
             + rolling_force
         )
+        # Vorzeichenbehaftete mechanische Motorleistung:
+        # Positiver Wert:
+        # Der Motor muss das Fahrrad antreiben.
+        # Negativer Wert:
+        # Zum Einhalten des gemessenen Fahrprofils mussgebremst werden. Diese Leistung kann späterteilweise zur Rekuperation verwendet werden.
+        signed_power = (
+            total_force
+            * speeds
+        )
 
-        # Mechanische Motorleistung.
-        power = total_force * speeds
-        for i in range(len(power)):
-            if power[i] < 0:
-                power[i] = 0.0
-                
+        # Antriebsfall nur positive Leistungswerte verwendet.
+        drive_power = np.clip(
+            signed_power,
+            0.0,
+            None,
+        )
 
-        # Drehmoment am angetriebenen Rad.
-        torque = total_force * self.wheel_radius_m
-        for i in range(len(torque)):
-            if torque[i] < 0:
-                torque[i] = 0.0
-                
+        # Die Bremsleistung wird als positiver Betrag gespeichert.
+        braking_power = np.clip(
+            -signed_power,
+            0.0,
+            None,
+        )
 
-        # Benötigter Motorstrom über die Motorkonstante.
+        # Vorzeichenbehaftetes Drehmoment:
+        # Positiv bedeutet Antrieb, negativ bedeutet Bremsen.
+        signed_torque = (
+            total_force
+            * self.wheel_radius_m
+        )
+
+        # Positives Drehmoment für den Antrieb.
+        drive_torque = np.clip(
+            signed_torque,
+            0.0,
+            None,
+        )
+
+        # Bremsmoment als positiver Betrag.
+        braking_torque = np.clip(
+            -signed_torque,
+            0.0,
+            None,
+        )
+
+        #  Strom beschreibt nur den Antriebsfall. 
         motor_current = (
-            torque / self.motor_constant_nm_per_a
+            drive_torque
+            / self.motor_constant_nm_per_a
         )
 
         return {
@@ -186,7 +217,14 @@ class Motor:
             "rolling_force_n": rolling_force,
             "air_force_n": air_force,
             "force_n": total_force,
-            "power_w": power,
-            "torque_nm": torque,
+            "power_w": drive_power,
+            # Zusätzliche Werte für die spätere Rekuperation.
+            "signed_power_w": signed_power,
+            "braking_power_w": braking_power,
+            # Positives Antriebsdrehmoment.
+            "torque_nm": drive_torque,
+            # Zusätzliche Drehmomentwerte für Bremsphasen.
+            "signed_torque_nm": signed_torque,
+            "braking_torque_nm": braking_torque,
             "current_a": motor_current,
         }
