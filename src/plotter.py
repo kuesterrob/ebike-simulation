@@ -20,6 +20,7 @@ def get_plot_definitions(
     motor = results["motor"]
     battery = results["battery"]
     environment = results["environment"]
+    braking = results["braking"]
 
     return {
         "Geschwindigkeit": {
@@ -129,8 +130,11 @@ def get_plot_definitions(
         "Akkustrom": {
             "x": time["intervals"],
             "series": {
-                "Akkustrom": (
-                    motor["battery_current_a"]
+                "LiPo": (
+                    battery["lipo_current_a"]
+                ),
+                "NMC": (
+                    battery["nmc_current_a"]
                 ),
             },
             "x_label": "Zeit",
@@ -200,6 +204,80 @@ def get_plot_definitions(
             "y_label": "Innenwiderstand [mΩ]",
         },
 
+        "Bremsleistungsbedarf": {
+            "x": time["intervals"],
+            "series": {
+                "Mechanischer Bremsbedarf": (
+                    motor["braking_power_w"]
+                ),
+            },
+            "x_label": "Zeit",
+            "y_label": "Leistung [W]",
+        },
+
+        "Rekuperationsleistung": {
+            "x": time["intervals"],
+            "series": {
+                "LiPo-Akku": (
+                    braking["lipo_charge_power_w"]
+                ),
+                "NMC-Akku": (
+                    braking["nmc_charge_power_w"]
+                ),
+            },
+            "x_label": "Zeit",
+            "y_label": "Ladeleistung [W]",
+        },
+
+        "Bremswiderstandsleistung": {
+            "x": time["intervals"],
+            "series": {
+                "LiPo-Simulation": (
+                    braking["lipo_resistor_power_w"]
+                ),
+                "NMC-Simulation": (
+                    braking["nmc_resistor_power_w"]
+                ),
+            },
+            "x_label": "Zeit",
+            "y_label": "Leistung [W]",
+        },
+
+        "Bremswiderstandstemperatur": {
+            "x": time["intervals"],
+            "series": {
+                "LiPo-Simulation": (
+                    braking[
+                        "lipo_resistor_temperature_c"
+                    ]
+                ),
+                "NMC-Simulation": (
+                    braking[
+                        "nmc_resistor_temperature_c"
+                    ]
+                ),
+            },
+            "x_label": "Zeit",
+            "y_label": "Temperatur [°C]",
+        },
+
+        "Mechanische Bremsleistung": {
+            "x": time["intervals"],
+            "series": {
+                "LiPo-Simulation": (
+                    braking[
+                        "lipo_friction_brake_power_w"
+                    ]
+                ),
+                "NMC-Simulation": (
+                    braking[
+                        "nmc_friction_brake_power_w"
+                    ]
+                ),
+            },
+            "x_label": "Zeit",
+            "y_label": "Leistung [W]",
+        },
 
     }
 
