@@ -268,12 +268,26 @@ class BikeSimulator:
         battery_resistance_temperature_coefficient = 0.01
 
         # Die angegebenen Widerstände werden als Werte
-        # bei einer Referenztemperatur von 25 °C interpretiert.
+         # bei einer Referenztemperatur von 25 °C interpretiert.
         battery_reference_temperature_c = 25.0
+
+        #Freie Modellannahme:
+        # Der Akku darf mit maximal 0,5 C (Laderate) geladen werden.
+        # Bei einem Akku mit 50 Ah ergibt das:
+        # I_Laden_max = 50 Ah * 0,5 = 25 A
+        battery_max_charge_c_rate = 0.5
+
+        battery_max_charge_current_a = (
+            self.battery_capacity_ah
+            * battery_max_charge_c_rate
+        )
 
         lipo = LiPoBatteryPack(
             capacity_nom_Ah=(
                 self.battery_capacity_ah
+            ),
+            max_charge_current_a=(
+                battery_max_charge_current_a
             ),
             internal_resistance_mOhm=80.0,
             initial_soc=self.initial_soc,
@@ -302,6 +316,9 @@ class BikeSimulator:
         nmc = NMCBatteryPack(
             capacity_nom_Ah=(
                 self.battery_capacity_ah
+            ),
+            max_charge_current_a=(
+                battery_max_charge_current_a
             ),
             internal_resistance_mOhm=70.0,
             initial_soc=self.initial_soc,

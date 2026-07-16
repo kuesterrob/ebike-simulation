@@ -9,6 +9,7 @@ class BatteryPack(BatteryBase):
     def __init__(
         self,
         capacity_nom_Ah: float,
+        max_charge_current_a: float,
         internal_resistance_mOhm: float = 80.0,
         initial_soc: float = 1.0,
         Vmin: float = 3.0,
@@ -20,9 +21,16 @@ class BatteryPack(BatteryBase):
         resistance_temperature_coefficient_per_k: float = 0.01,
         reference_temperature_c: float = 25.0,
     ) -> None:
+        
         if capacity_nom_Ah <= 0:
             raise ValueError(
                 "Die Akkukapazität muss größer als 0 sein."
+            )
+        
+        if max_charge_current_a <= 0:
+            raise ValueError(
+            "Der maximale Ladestrom muss größer "
+            "als 0 sein."
             )
 
         if not 0 < initial_soc <= 1:
@@ -74,6 +82,9 @@ class BatteryPack(BatteryBase):
         # Umrechnung der Kapazität:
         # 1 Ah = 3600 As
         self.C_nom = capacity_nom_Ah * 3600.0
+        # Maximal zulässiger Ladestrom des Akkupacks.
+        self.max_charge_current_a = max_charge_current_a
+
 
         self.soc = initial_soc
         self.Vmin = Vmin

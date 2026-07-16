@@ -7,6 +7,7 @@ class LiPoBatteryPack(BatteryPack):
     def __init__(
         self,
         capacity_nom_Ah: float,
+        max_charge_current_a: float,
         internal_resistance_mOhm: float = 80.0,
         initial_soc: float = 1.0,
         Vmin: float = 32.0,
@@ -20,6 +21,7 @@ class LiPoBatteryPack(BatteryPack):
     ) -> None:
         super().__init__(
             capacity_nom_Ah=capacity_nom_Ah,
+            max_charge_current_a=max_charge_current_a,
             internal_resistance_mOhm=(
                 internal_resistance_mOhm
             ),
