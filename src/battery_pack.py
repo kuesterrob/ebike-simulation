@@ -233,6 +233,51 @@ class BatteryPack(BatteryBase):
         # T_neu = T_alt + delta_T
         self.temperature_c += temperature_change_c
 
+    def maximum_charge_current(
+        self,
+        duration: float,
+    ) -> float:
+        """Berechnet den aktuell maximal erlaubten Ladestrom."""
+
+        if duration < 0:
+            raise ValueError(
+                "Die Zeitdauer darf nicht negativ sein."
+            )
+
+        # Ein voller Akku oder ein Zeitschritt ohne Zeitfortschritt erlaubt keinen Ladestrom.
+        if duration == 0 or self.is_full():
+            return 0.0
+
+        internal_resistance =  self.effective_internal_resistance()
+        
+
+        # Bei 0 A entspricht die Klemmenspannung der Leerlaufspannung.
+        open_circuit_voltage = self.voltage(current=0.0)
+
+        # Beim Laden steigt die Klemmenspannung:
+        # U_Klemme = U_OCV + I_Laden * R
+        #
+        # Daraus ergibt sich der maximal mögliche Ladestrom bis zur Spannungsgrenze Vmax.
+        voltage_headroom_v = max(self.Vmax - open_circuit_voltage,0.0,)
+
+        maximum_current_by_voltage = voltage_headroom_v/ internal_resistance
+        
+        # Diese Grenze verhindert, dass der SoC im aktuellen Zeitschritt über 100 % steigt.
+        maximum_current_by_soc = (
+            (1.0 - self.soc)
+            * self.C_nom
+            / duration
+        )
+
+        return max(
+            0.0,
+            min(
+                self.max_charge_current_a,
+                maximum_current_by_voltage,
+                maximum_current_by_soc,
+            ),
+        )
+
     def apply_current(
         self,
         current: float,
