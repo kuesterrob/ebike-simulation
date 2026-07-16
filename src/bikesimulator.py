@@ -8,6 +8,7 @@ from src.route_calculator import RouteCalculator
 from src.motor import Motor
 from src.lipo_battery import LiPoBatteryPack
 from src.nmc_battery import NMCBatteryPack
+from src.air_density import calculate_air_density
 
 
 logger = logging.getLogger(__name__)
@@ -127,6 +128,33 @@ class BikeSimulator:
             dtype=float
         )
 
+        temperatures = dataframe[
+            "temperature"
+        ].to_numpy(
+            dtype=float
+        )
+
+
+        # Geschwindigkeit, Beschleunigung und Steigung beziehen sich immer auf den Abschnitt zwischen zwei GPS-Punkten.
+        # Aus beiden Werten wird die mittlere Höhe des Abschnitts gebildet.
+        interval_elevations = (
+            elevations[:-1]
+            + elevations[1:]
+        ) / 2.0
+
+        # Auch die Temperatur wird für jeden Streckenabschnitt aus dem Mittelwert von Start- und Endtemperatur bestimmt.
+        interval_temperatures = (
+            temperatures[:-1]
+            + temperatures[1:]
+        ) / 2.0
+
+        # Für jeden Streckenabschnitt wird aus der mittleren Temperatur und Höhe eine eigene Luftdichte berechnet.
+        air_densities = calculate_air_density(
+            temperatures_c=interval_temperatures,
+            altitudes_m=interval_elevations,
+        )
+
+
         slopes = (
             route_calculator.calculate_slope(
                 distances,
@@ -168,6 +196,7 @@ class BikeSimulator:
             speeds=speeds,
             accelerations=accelerations,
             slopes=slopes,
+            air_density_kg_per_m3=air_densities,
         )
 
         forces = motor_results[
@@ -346,6 +375,24 @@ class BikeSimulator:
             "descent_m": float(
                 reader.descent
             ),
+            "average_temperature_c": float(
+                np.mean(interval_temperatures)
+            ),
+            "min_temperature_c": float(
+                np.min(interval_temperatures)
+            ),
+            "max_temperature_c": float(
+                np.max(interval_temperatures)
+            ),
+            "average_air_density_kg_per_m3": float(
+                np.mean(air_densities)
+            ),
+            "min_air_density_kg_per_m3": float(
+                np.min(air_densities)
+            ),
+            "max_air_density_kg_per_m3": float(
+                np.max(air_densities)
+            ),
             "max_power_w": float(
                 np.max(positive_powers)
             ),
@@ -409,6 +456,26 @@ class BikeSimulator:
                 "slope": slopes,
                 "slope_degrees": (
                     slope_degrees
+                ),
+            },
+
+            "environment": {
+                # Originale Temperaturwerte der GPS-Messpunkte.
+                "temperature_c": temperatures,
+
+                # Gemittelte Temperatur jedes Streckenabschnitts.
+                "interval_temperature_c": (
+                    interval_temperatures
+                ),
+
+                # Gemittelte Höhe jedes Streckenabschnitts.
+                "interval_elevation_m": (
+                    interval_elevations
+                ),
+
+                # Berechnete Luftdichte jedes Streckenabschnitts.
+                "air_density_kg_per_m3": (
+                    air_densities
                 ),
             },
 

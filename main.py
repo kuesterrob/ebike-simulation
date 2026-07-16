@@ -75,6 +75,30 @@ def print_metrics(
         f"{metrics['descent_m']:.0f} m"
     )
 
+    print("\n--- Umgebung ---")
+
+    print(
+        f"Durchschnittstemperatur: "
+        f"{metrics['average_temperature_c']:.1f} °C"
+    )
+
+    print(
+        f"Temperaturbereich: "
+        f"{metrics['min_temperature_c']:.1f} bis "
+        f"{metrics['max_temperature_c']:.1f} °C"
+    )
+
+    print(
+        f"Durchschnittliche Luftdichte: "
+        f"{metrics['average_air_density_kg_per_m3']:.3f} kg/m³"
+    )
+
+    print(
+        f"Luftdichtebereich: "
+        f"{metrics['min_air_density_kg_per_m3']:.3f} bis "
+        f"{metrics['max_air_density_kg_per_m3']:.3f} kg/m³"
+    )
+
     print("\n--- Motor ---")
 
     print(

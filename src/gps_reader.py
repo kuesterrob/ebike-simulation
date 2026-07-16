@@ -49,6 +49,7 @@ class GPSReader:
             "lon",
             "ele",
             "time",
+            "temperature",
         }
 
         missing_columns = (
