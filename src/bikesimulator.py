@@ -9,6 +9,9 @@ from src.motor import Motor
 from src.lipo_battery import LiPoBatteryPack
 from src.nmc_battery import NMCBatteryPack
 from src.air_density import calculate_air_density
+from src.brake_resistor import BrakeResistor
+from src.regenerative_braking import RegenerativeBrakingController
+
 
 
 logger = logging.getLogger(__name__)
@@ -211,6 +214,16 @@ class BikeSimulator:
             "power_w"
         ]
 
+        # Motorleistung mit Vorzeichen: positiv = Antrieb negativ = Bremsen
+        signed_powers = motor_results[
+            "signed_power_w"
+        ]
+
+        # Mechanischer Bremsleistungsbedarf als positiver Betrag.
+        braking_powers = motor_results[
+            "braking_power_w"
+        ]
+
         torques = motor_results[
             "torque_nm"
         ]
@@ -343,6 +356,36 @@ class BikeSimulator:
                 battery_reference_temperature_c
             ),
         )
+        # FModellannahmen für die Rekuperation:
+        # 75 % der mechanisch aufgenommenen Bremsleistung können elektrisch genutzt werden.
+        # Der Motor kann im Generatorbetrieb höchstens500 W elektrische Leistung liefern.
+        regenerative_controller = (
+            RegenerativeBrakingController(
+                efficiency=0.75,
+                max_electrical_power_w=500.0,
+            )
+        )
+
+        #Modellannahmen für den Bremswiderstand.
+        brake_resistor_parameters = {
+            "resistance_ohm": 4.0,
+            "max_power_w": 500.0,
+            "initial_temperature_c": (
+                initial_battery_temperature_c
+            ),
+            "thermal_capacity_j_per_k": 5_000.0,
+            "thermal_resistance_k_per_w": 1.0,
+        }
+
+        # LiPo und NMC sind zwei alternative Simulationen. Deshalb benötigt jede Variante einen eigenen
+        # Widerstand mit eigenem Temperaturzustand.
+        lipo_brake_resistor = BrakeResistor(
+            **brake_resistor_parameters
+        )
+
+        nmc_brake_resistor = BrakeResistor(
+            **brake_resistor_parameters
+        )
 
         lipo_voltages = []
         nmc_voltages = []
@@ -353,35 +396,94 @@ class BikeSimulator:
         lipo_internal_resistances = []
         nmc_internal_resistances = []
 
-        for current, duration, ambient_temperature in zip(
+        lipo_currents = []
+        nmc_currents = []
+
+        lipo_charge_powers = []
+        nmc_charge_powers = []
+
+        lipo_resistor_powers = []
+        nmc_resistor_powers = []
+
+        lipo_resistor_temperatures = []
+        nmc_resistor_temperatures = []
+
+        lipo_friction_brake_powers = []
+        nmc_friction_brake_powers = []
+
+        lipo_conversion_loss_powers = []
+        nmc_conversion_loss_powers = []
+
+        for (
+            drive_current,
+            braking_power,
+            duration,
+            ambient_temperature,
+        ) in zip(
             battery_currents,
+            braking_powers,
             valid_time_deltas,
             interval_temperatures,
         ):
-            current = float(current)
+            drive_current = float(drive_current)
+            braking_power = float(braking_power)
             duration = float(duration)
             ambient_temperature = float(
                 ambient_temperature
             )
 
-            # Zuerst wird der Ladezustand für das
-            # aktuelle Zeitintervall aktualisiert.
+            # Die Energieverteilung wird für beide Akkuvarianten getrennt berechnet, weil ihr SoC und ihre Spannung unterschiedlich sein können.
+            lipo_braking_result = (
+                regenerative_controller.distribute(
+                    braking_power_w=braking_power,
+                    duration=duration,
+                    battery=lipo,
+                    brake_resistor=(
+                        lipo_brake_resistor
+                    ),
+                )
+            )
+
+            nmc_braking_result = (
+                regenerative_controller.distribute(
+                    braking_power_w=braking_power,
+                    duration=duration,
+                    battery=nmc,
+                    brake_resistor=(
+                        nmc_brake_resistor
+                    ),
+                )
+            )
+
+            if braking_power > 0:
+                # Negative Ströme laden den Akku.
+                lipo_current = lipo_braking_result[
+                    "battery_current_a"
+                ]
+
+                nmc_current = nmc_braking_result[
+                    "battery_current_a"
+                ]
+
+            else:
+                # Im normalen Antriebsfall wird der positive Motorstrom verwendet.
+                lipo_current = drive_current
+                nmc_current = drive_current
+
+            # Ladezustand aktualisieren.
             lipo.apply_current(
-                current=current,
+                current=lipo_current,
                 duration=duration,
             )
 
             nmc.apply_current(
-                current=current,
+                current=nmc_current,
                 duration=duration,
             )
 
-            # Anschließend wird die Temperatur für das
-            # Zeitintervall berechnet:
-            #
-            # T_neu = T_alt+ ((I²R - (T_alt - T_amb)/R_th) * delta_t) / C_th
+            # Akkutemperatur aktualisieren.
             lipo.update_temperature(
-                current=current,
+                current=lipo_current,
                 duration=duration,
                 ambient_temperature_c=(
                     ambient_temperature
@@ -389,27 +491,47 @@ class BikeSimulator:
             )
 
             nmc.update_temperature(
-                current=current,
+                current=nmc_current,
                 duration=duration,
                 ambient_temperature_c=(
                     ambient_temperature
                 ),
             )
 
-            # Die Spannung wird am Ende des Intervalls mit dem neuen SoC und der neuen Temperatur berechnet.
+            # Bremswiderstand erwärmen beziehungsweise  während inaktiver Abschnitte abkühlen.
+            lipo_brake_resistor.update_temperature(
+                power_w=lipo_braking_result[
+                    "resistor_power_w"
+                ],
+                duration=duration,
+                ambient_temperature_c=(
+                    ambient_temperature
+                ),
+            )
+
+            nmc_brake_resistor.update_temperature(
+                power_w=nmc_braking_result[
+                    "resistor_power_w"
+                ],
+                duration=duration,
+                ambient_temperature_c=(
+                    ambient_temperature
+                ),
+            )
+
+            # Spannung am Ende des Zeitintervalls speichern.
             lipo_voltages.append(
                 lipo.voltage(
-                    current=current
+                    current=lipo_current
                 )
             )
 
             nmc_voltages.append(
                 nmc.voltage(
-                    current=current
+                    current=nmc_current
                 )
             )
 
-            # Temperaturen am Ende des Intervalls speichern.
             lipo_temperatures.append(
                 lipo.temperature_c
             )
@@ -418,13 +540,78 @@ class BikeSimulator:
                 nmc.temperature_c
             )
 
-            # Temperaturabhängige Widerstände speichern.
             lipo_internal_resistances.append(
                 lipo.effective_internal_resistance()
             )
 
             nmc_internal_resistances.append(
                 nmc.effective_internal_resistance()
+            )
+
+            # Tatsächliche Akkuströme speichern.
+            lipo_currents.append(
+                lipo_current
+            )
+
+            nmc_currents.append(
+                nmc_current
+            )
+
+            # Aufteilung der Bremsleistung speichern.
+            lipo_charge_powers.append(
+                lipo_braking_result[
+                    "battery_charge_power_w"
+                ]
+            )
+
+            nmc_charge_powers.append(
+                nmc_braking_result[
+                    "battery_charge_power_w"
+                ]
+            )
+
+            lipo_resistor_powers.append(
+                lipo_braking_result[
+                    "resistor_power_w"
+                ]
+            )
+
+            nmc_resistor_powers.append(
+                nmc_braking_result[
+                    "resistor_power_w"
+                ]
+            )
+
+            lipo_resistor_temperatures.append(
+                lipo_brake_resistor.temperature_c
+            )
+
+            nmc_resistor_temperatures.append(
+                nmc_brake_resistor.temperature_c
+            )
+
+            lipo_friction_brake_powers.append(
+                lipo_braking_result[
+                    "friction_brake_power_w"
+                ]
+            )
+
+            nmc_friction_brake_powers.append(
+                nmc_braking_result[
+                    "friction_brake_power_w"
+                ]
+            )
+
+            lipo_conversion_loss_powers.append(
+                lipo_braking_result[
+                    "conversion_loss_power_w"
+                ]
+            )
+
+            nmc_conversion_loss_powers.append(
+                nmc_braking_result[
+                    "conversion_loss_power_w"
+                ]
             )
 
         lipo_voltages = np.asarray(
@@ -457,21 +644,81 @@ class BikeSimulator:
             dtype=float,
         )
 
-        # Elektrische Leistung am Ausgang des Akkus:
-        #
-        # P_Akku = U_Last * I
-        #
-        # Da U_Last vom temperaturabhängigen Widerstand
-        # abhängt, beeinflusst die Temperatur auch diese Leistung.
+        lipo_currents = np.asarray(
+            lipo_currents,
+            dtype=float,
+        )
+
+        nmc_currents = np.asarray(
+            nmc_currents,
+            dtype=float,
+        )
+
+        lipo_charge_powers = np.asarray(
+            lipo_charge_powers,
+            dtype=float,
+        )
+
+        nmc_charge_powers = np.asarray(
+            nmc_charge_powers,
+            dtype=float,
+        )
+
+        lipo_resistor_powers = np.asarray(
+            lipo_resistor_powers,
+            dtype=float,
+        )
+
+        nmc_resistor_powers = np.asarray(
+            nmc_resistor_powers,
+            dtype=float,
+        )
+
+        lipo_resistor_temperatures = np.asarray(
+            lipo_resistor_temperatures,
+            dtype=float,
+        )
+
+        nmc_resistor_temperatures = np.asarray(
+            nmc_resistor_temperatures,
+            dtype=float,
+        )
+
+        lipo_friction_brake_powers = np.asarray(
+            lipo_friction_brake_powers,
+            dtype=float,
+        )
+
+        nmc_friction_brake_powers = np.asarray(
+            nmc_friction_brake_powers,
+            dtype=float,
+        )
+
+        lipo_conversion_loss_powers = np.asarray(
+            lipo_conversion_loss_powers,
+            dtype=float,
+        )
+
+        nmc_conversion_loss_powers = np.asarray(
+            nmc_conversion_loss_powers,
+            dtype=float,
+        )
+
+        # Positive Akkuleistung:
+        # Der Akku gibt Energie ab.
+        # Negative Akkuleistung:
+        # Der Akku wird durch Rekuperation geladen.
         lipo_powers = (
             lipo_voltages
-            * battery_currents
+            * lipo_currents
         )
 
         nmc_powers = (
             nmc_voltages
-            * battery_currents
+            * nmc_currents
         )
+
+        
 
         # Ungültige Batteriespannungen erkennen.
         if not np.all(
@@ -696,6 +943,8 @@ class BikeSimulator:
                 "force_n": forces,
                 "rolling_force_n": rolling_forces,
                 "power_w": powers,
+                "signed_power_w": signed_powers,
+                "braking_power_w": braking_powers,
                 "torque_nm": torques,
                 "current_a": motor_currents,
                 "battery_current_a": (
@@ -710,13 +959,19 @@ class BikeSimulator:
                 "nmc_voltage_v": (
                     nmc_voltages
                 ),
+                "lipo_current_a": (
+                    lipo_currents
+                ),
+                "nmc_current_a": (
+                    nmc_currents
+                ),
                 "lipo_soc_percent": (
                     lipo.soc * 100.0
                 ),
                 "nmc_soc_percent": (
                     nmc.soc * 100.0
                 ),
-                                "lipo_temperature_c": (
+                "lipo_temperature_c": (
                     lipo_temperatures
                 ),
                 "nmc_temperature_c": (
@@ -733,6 +988,38 @@ class BikeSimulator:
                 ),
                 "nmc_power_w": (
                     nmc_powers
+                ),
+            },
+            "braking": {
+                "lipo_charge_power_w": (
+                    lipo_charge_powers
+                ),
+                "nmc_charge_power_w": (
+                    nmc_charge_powers
+                ),
+                "lipo_resistor_power_w": (
+                    lipo_resistor_powers
+                ),
+                "nmc_resistor_power_w": (
+                    nmc_resistor_powers
+                ),
+                "lipo_resistor_temperature_c": (
+                    lipo_resistor_temperatures
+                ),
+                "nmc_resistor_temperature_c": (
+                    nmc_resistor_temperatures
+                ),
+                "lipo_friction_brake_power_w": (
+                    lipo_friction_brake_powers
+                ),
+                "nmc_friction_brake_power_w": (
+                    nmc_friction_brake_powers
+                ),
+                "lipo_conversion_loss_power_w": (
+                    lipo_conversion_loss_powers
+                ),
+                "nmc_conversion_loss_power_w": (
+                    nmc_conversion_loss_powers
                 ),
             },
         }
