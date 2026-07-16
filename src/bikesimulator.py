@@ -203,6 +203,10 @@ class BikeSimulator:
             "force_n"
         ]
 
+        rolling_forces = motor_results[
+            "rolling_force_n"
+        ]
+
         powers = motor_results[
             "power_w"
         ]
@@ -375,6 +379,15 @@ class BikeSimulator:
             "descent_m": float(
                 reader.descent
             ),
+            "rolling_resistance_coefficient": float(
+                motor.rolling_resistance_coefficient
+            ),
+            "average_rolling_force_n": float(
+                np.mean(rolling_forces)
+            ),
+            "max_rolling_force_n": float(
+                np.max(rolling_forces)
+            ),
             "average_temperature_c": float(
                 np.mean(interval_temperatures)
             ),
@@ -481,6 +494,7 @@ class BikeSimulator:
 
             "motor": {
                 "force_n": forces,
+                "rolling_force_n": rolling_forces,
                 "power_w": powers,
                 "torque_nm": torques,
                 "current_a": motor_currents,

@@ -14,6 +14,7 @@ class Motor:
         drag_area_m2: float = 0.5625,
         wheel_diameter_inch: float = 27.0,
         motor_constant_nm_per_a: float = 1.5,
+         rolling_resistance_coefficient: float = 0.0077, # Quelle: Tengattini & Bigazzi (2018), DOI: 10.1080/02640414.2018.1458587
     ) -> None:
         
         if total_mass_kg <= 0:
@@ -36,11 +37,18 @@ class Motor:
             raise ValueError(
                 "Die Motorkonstante muss größer als 0 sein."
             )
+        
+        if rolling_resistance_coefficient < 0:
+            raise ValueError(
+                "Der Rollwiderstandskoeffizient darf nicht "
+                "negativ sein."
+            )
 
     
         self.total_mass_kg = total_mass_kg
         self.drag_area_m2 = drag_area_m2
         self.motor_constant_nm_per_a = motor_constant_nm_per_a
+        self.rolling_resistance_coefficient = rolling_resistance_coefficient
 
         # Erdbeschleunigung in m/s².
         self.gravity_m_per_s2 = 9.81
@@ -108,6 +116,32 @@ class Motor:
             * self.gravity_m_per_s2
             * slopes
         )
+        # slopes entspricht dem Verhältnis aus Höhenänderung und tatsächlicher Streckenlänge. Damit entspricht slopes dem Sinus des Steigungswinkels.
+        # Für den Rollwiderstand wird der Cosinus benötigt, weil nur die senkrecht auf die Straße wirkende Normalkraft berücksichtigt wird.
+        cos_slope = np.sqrt(
+            1.0
+            - np.clip(
+                slopes,
+                -1.0,
+                1.0,
+            ) ** 2
+        )
+
+        # Der Rollwiderstand ergibt sich aus dem Rollwiderstandskoeffizienten und der Normalkraft:
+        # F_Roll = c_rr * m * g * cos(alpha).
+        rolling_force = (
+            self.rolling_resistance_coefficient
+            * self.total_mass_kg
+            * self.gravity_m_per_s2
+            * cos_slope
+        )
+
+       
+        rolling_force = np.where(
+            speeds > 0,  # Rollwiderstand entsteht nur, wenn das Fahrrad rollt.
+            rolling_force,
+            0.0,
+        )
 
         # Die Luftwiderstandskraft wird für jeden Streckenabschnitt mit der dort berechneten Luftdichte bestimmt.
         # F_Luft = 0,5 * Luftdichte * Widerstandsfläche * Geschwindigkeit²
@@ -124,6 +158,7 @@ class Motor:
             acceleration_force
             + slope_force
             + air_force
+            + rolling_force
         )
 
         # Mechanische Motorleistung.
@@ -148,6 +183,7 @@ class Motor:
         return {
             "acceleration_force_n": acceleration_force,
             "slope_force_n": slope_force,
+            "rolling_force_n": rolling_force,
             "air_force_n": air_force,
             "force_n": total_force,
             "power_w": power,

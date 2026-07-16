@@ -102,6 +102,21 @@ def print_metrics(
     print("\n--- Motor ---")
 
     print(
+        f"Rollwiderstandskoeffizient: "
+        f"{metrics['rolling_resistance_coefficient']:.4f}"
+    )
+
+    print(
+        f"Durchschnittlicher Rollwiderstand: "
+        f"{metrics['average_rolling_force_n']:.2f} N"
+    )
+
+    print(
+        f"Maximaler Rollwiderstand: "
+        f"{metrics['max_rolling_force_n']:.2f} N"
+    )
+
+    print(
         f"Maximale Leistung: "
         f"{metrics['max_power_w']:.0f} W"
     )
