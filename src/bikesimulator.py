@@ -248,6 +248,29 @@ class BikeSimulator:
         )
 
         # Akkus
+
+        # Der Akku stand vor der Fahrt lange genug in derselben Umgebung. Seine Anfangstemperatu entspricht deshalb dem ersten Temperaturwert der CSV-Datei.
+        initial_battery_temperature_c = float(
+            temperatures[0]
+        )
+
+        # Die Anzahl paralleler Zellstränge ist nicht bekannt.
+        # Deshalb wird zunächst ein paralleler Strang angenommen.
+        battery_parallel_cells = 1
+
+        # Freie thermische Modellannahmen, weil keine
+        # Daten für den Akkupack vorhanden sind.
+        battery_thermal_capacity_j_per_k = 10_000.0
+        battery_thermal_resistance_k_per_w = 2.0
+
+        # Modellannahme:
+        # Der Innenwiderstand verändert sich um 1 % pro Kelvin.
+        battery_resistance_temperature_coefficient = 0.01
+
+        # Die angegebenen Widerstände werden als Werte
+        # bei einer Referenztemperatur von 25 °C interpretiert.
+        battery_reference_temperature_c = 25.0
+
         lipo = LiPoBatteryPack(
             capacity_nom_Ah=(
                 self.battery_capacity_ah
@@ -256,6 +279,24 @@ class BikeSimulator:
             initial_soc=self.initial_soc,
             Vmin=32.0,
             Vmax=42.0,
+            parallel_cells=(
+                battery_parallel_cells
+            ),
+            initial_temperature_c=(
+                initial_battery_temperature_c
+            ),
+            thermal_capacity_j_per_k=(
+                battery_thermal_capacity_j_per_k
+            ),
+            thermal_resistance_k_per_w=(
+                battery_thermal_resistance_k_per_w
+            ),
+            resistance_temperature_coefficient_per_k=(
+                battery_resistance_temperature_coefficient
+            ),
+            reference_temperature_c=(
+                battery_reference_temperature_c
+            ),
         )
 
         nmc = NMCBatteryPack(
@@ -266,18 +307,48 @@ class BikeSimulator:
             initial_soc=self.initial_soc,
             Vmin=32.0,
             Vmax=42.0,
+            parallel_cells=(
+                battery_parallel_cells
+            ),
+            initial_temperature_c=(
+                initial_battery_temperature_c
+            ),
+            thermal_capacity_j_per_k=(
+                battery_thermal_capacity_j_per_k
+            ),
+            thermal_resistance_k_per_w=(
+                battery_thermal_resistance_k_per_w
+            ),
+            resistance_temperature_coefficient_per_k=(
+                battery_resistance_temperature_coefficient
+            ),
+            reference_temperature_c=(
+                battery_reference_temperature_c
+            ),
         )
 
         lipo_voltages = []
         nmc_voltages = []
 
-        for current, duration in zip(
+        lipo_temperatures = []
+        nmc_temperatures = []
+
+        lipo_internal_resistances = []
+        nmc_internal_resistances = []
+
+        for current, duration, ambient_temperature in zip(
             battery_currents,
             valid_time_deltas,
+            interval_temperatures,
         ):
             current = float(current)
             duration = float(duration)
+            ambient_temperature = float(
+                ambient_temperature
+            )
 
+            # Zuerst wird der Ladezustand für das
+            # aktuelle Zeitintervall aktualisiert.
             lipo.apply_current(
                 current=current,
                 duration=duration,
@@ -288,6 +359,27 @@ class BikeSimulator:
                 duration=duration,
             )
 
+            # Anschließend wird die Temperatur für das
+            # Zeitintervall berechnet:
+            #
+            # T_neu = T_alt+ ((I²R - (T_alt - T_amb)/R_th) * delta_t) / C_th
+            lipo.update_temperature(
+                current=current,
+                duration=duration,
+                ambient_temperature_c=(
+                    ambient_temperature
+                ),
+            )
+
+            nmc.update_temperature(
+                current=current,
+                duration=duration,
+                ambient_temperature_c=(
+                    ambient_temperature
+                ),
+            )
+
+            # Die Spannung wird am Ende des Intervalls mit dem neuen SoC und der neuen Temperatur berechnet.
             lipo_voltages.append(
                 lipo.voltage(
                     current=current
@@ -300,6 +392,24 @@ class BikeSimulator:
                 )
             )
 
+            # Temperaturen am Ende des Intervalls speichern.
+            lipo_temperatures.append(
+                lipo.temperature_c
+            )
+
+            nmc_temperatures.append(
+                nmc.temperature_c
+            )
+
+            # Temperaturabhängige Widerstände speichern.
+            lipo_internal_resistances.append(
+                lipo.effective_internal_resistance()
+            )
+
+            nmc_internal_resistances.append(
+                nmc.effective_internal_resistance()
+            )
+
         lipo_voltages = np.asarray(
             lipo_voltages,
             dtype=float,
@@ -308,6 +418,42 @@ class BikeSimulator:
         nmc_voltages = np.asarray(
             nmc_voltages,
             dtype=float,
+        )
+
+        lipo_temperatures = np.asarray(
+            lipo_temperatures,
+            dtype=float,
+        )
+
+        nmc_temperatures = np.asarray(
+            nmc_temperatures,
+            dtype=float,
+        )
+
+        lipo_internal_resistances = np.asarray(
+            lipo_internal_resistances,
+            dtype=float,
+        )
+
+        nmc_internal_resistances = np.asarray(
+            nmc_internal_resistances,
+            dtype=float,
+        )
+
+        # Elektrische Leistung am Ausgang des Akkus:
+        #
+        # P_Akku = U_Last * I
+        #
+        # Da U_Last vom temperaturabhängigen Widerstand
+        # abhängt, beeinflusst die Temperatur auch diese Leistung.
+        lipo_powers = (
+            lipo_voltages
+            * battery_currents
+        )
+
+        nmc_powers = (
+            nmc_voltages
+            * battery_currents
         )
 
         # Ungültige Batteriespannungen erkennen.
@@ -324,6 +470,22 @@ class BikeSimulator:
         ):
             raise ValueError(
                 "Die NMC-Spannungen enthalten "
+                "ungültige Werte."
+            )
+        
+        if not (
+            np.all(np.isfinite(lipo_temperatures)) and np.all(np.isfinite(nmc_temperatures))
+        ):
+            raise ValueError(
+                "Die Akkutemperaturen enthalten "
+                "ungültige Werte."
+            )
+
+        if not (
+            np.all(np.isfinite(lipo_internal_resistances)) and np.all(np.isfinite(nmc_internal_resistances))
+        ):
+            raise ValueError(
+                "Die Akku-Innenwiderstände enthalten "
                 "ungültige Werte."
             )
 
@@ -414,6 +576,27 @@ class BikeSimulator:
             ),
             "mechanical_energy_wh": (
                 mechanical_energy_wh
+            ),
+                        "initial_battery_temperature_c": (
+                initial_battery_temperature_c
+            ),
+            "max_lipo_temperature_c": float(
+                np.max(lipo_temperatures)
+            ),
+            "max_nmc_temperature_c": float(
+                np.max(nmc_temperatures)
+            ),
+            "final_lipo_temperature_c": float(
+                lipo_temperatures[-1]
+            ),
+            "final_nmc_temperature_c": float(
+                nmc_temperatures[-1]
+            ),
+            "max_lipo_battery_power_w": float(
+                np.max(lipo_powers)
+            ),
+            "max_nmc_battery_power_w": float(
+                np.max(nmc_powers)
             ),
             "lipo_soc_percent": (
                 lipo.soc * 100.0
@@ -515,6 +698,24 @@ class BikeSimulator:
                 ),
                 "nmc_soc_percent": (
                     nmc.soc * 100.0
+                ),
+                                "lipo_temperature_c": (
+                    lipo_temperatures
+                ),
+                "nmc_temperature_c": (
+                    nmc_temperatures
+                ),
+                "lipo_internal_resistance_ohm": (
+                    lipo_internal_resistances
+                ),
+                "nmc_internal_resistance_ohm": (
+                    nmc_internal_resistances
+                ),
+                "lipo_power_w": (
+                    lipo_powers
+                ),
+                "nmc_power_w": (
+                    nmc_powers
                 ),
             },
         }

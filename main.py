@@ -152,6 +152,33 @@ def print_metrics(
         f"Minimale NMC-Spannung: "
         f"{metrics['min_nmc_voltage_v']:.2f} V"
     )
+    # Anfangstemperatur des Akkus aus dem erstenTemperaturwert der CSV-Datei.
+    print(
+        f"Akku-Anfangstemperatur: "
+        f"{metrics['initial_battery_temperature_c']:.2f} °C"
+    )
+
+    # Höchste berechnete Akkutemperaturen während der Fahrt.
+    print(
+        f"LiPo-Maximaltemperatur: "
+        f"{metrics['max_lipo_temperature_c']:.2f} °C"
+    )
+
+    print(
+        f"NMC-Maximaltemperatur: "
+        f"{metrics['max_nmc_temperature_c']:.2f} °C"
+    )
+
+    # Akkutemperaturen am Ende der Fahrt.
+    print(
+        f"LiPo-Endtemperatur: "
+        f"{metrics['final_lipo_temperature_c']:.2f} °C"
+    )
+
+    print(
+        f"NMC-Endtemperatur: "
+        f"{metrics['final_nmc_temperature_c']:.2f} °C"
+    )
 
 
 def show_results(
