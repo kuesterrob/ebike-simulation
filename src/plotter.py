@@ -150,6 +150,57 @@ def get_plot_definitions(
             "x_label": "Zeit",
             "y_label": "Spannung [V]",
         },
+                "Akkutemperatur": {
+            "x": time["intervals"],
+            "series": {
+                "LiPo": (
+                    battery[
+                        "lipo_temperature_c"
+                    ]
+                ),
+                "NMC": (
+                    battery[
+                        "nmc_temperature_c"
+                    ]
+                ),
+            },
+            "x_label": "Zeit",
+            "y_label": "Temperatur [°C]",
+        },
+                "Akkuleistung": {
+            "x": time["intervals"],
+            "series": {
+                "LiPo": (
+                    battery["lipo_power_w"]
+                ),
+                "NMC": (
+                    battery["nmc_power_w"]
+                ),
+            },
+            "x_label": "Zeit",
+            "y_label": "Leistung [W]",
+        },
+                "Akku-Innenwiderstand": {
+            "x": time["intervals"],
+            "series": {
+                "LiPo": (
+                    battery[
+                        "lipo_internal_resistance_ohm"
+                    ]
+                    * 1000.0
+                ),
+                "NMC": (
+                    battery[
+                        "nmc_internal_resistance_ohm"
+                    ]
+                    * 1000.0
+                ),
+            },
+            "x_label": "Zeit",
+            "y_label": "Innenwiderstand [mΩ]",
+        },
+
+
     }
 
 

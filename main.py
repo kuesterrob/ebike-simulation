@@ -180,6 +180,16 @@ def print_metrics(
         f"{metrics['final_nmc_temperature_c']:.2f} °C"
     )
 
+    print(
+        f"Maximale LiPo-Akkuleistung: "
+        f"{metrics['max_lipo_battery_power_w']:.0f} W"
+    )
+
+    print(
+        f"Maximale NMC-Akkuleistung: "
+        f"{metrics['max_nmc_battery_power_w']:.0f} W"
+    )
+
 
 def show_results(
     results: dict,
