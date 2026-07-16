@@ -785,6 +785,82 @@ class BikeSimulator:
             )
             / 3600.0
         )
+        # Gesamte mechanische Bremsenergie, die durch das gemessene Fahrprofil angefordert wird.
+        mechanical_braking_energy_wh = float(
+            np.sum(
+                braking_powers
+                * valid_time_deltas
+            )
+            / 3600.0
+        )
+
+        # Elektrische Energie, die in den Akku geladen wird.
+        lipo_recovered_energy_wh = float(
+            np.sum(
+                lipo_charge_powers
+                * valid_time_deltas
+            )
+            / 3600.0
+        )
+
+        nmc_recovered_energy_wh = float(
+            np.sum(
+                nmc_charge_powers
+                * valid_time_deltas
+            )
+            / 3600.0
+        )
+
+        # Energie, die im Bremswiderstand in Wärme umgewandelt wird.
+        lipo_resistor_energy_wh = float(
+            np.sum(
+                lipo_resistor_powers
+                * valid_time_deltas
+            )
+            / 3600.0
+        )
+
+        nmc_resistor_energy_wh = float(
+            np.sum(
+                nmc_resistor_powers
+                * valid_time_deltas
+            )
+            / 3600.0
+        )
+
+        # Energie, die von der mechanischen Bremse aufgenommen werden muss.
+        lipo_friction_brake_energy_wh = float(
+            np.sum(
+                lipo_friction_brake_powers
+                * valid_time_deltas
+            )
+            / 3600.0
+        )
+
+        nmc_friction_brake_energy_wh = float(
+            np.sum(
+                nmc_friction_brake_powers
+                * valid_time_deltas
+            )
+            / 3600.0
+        )
+
+        # Verluste bei der Umwandlung von mechanischer in elektrische Energie.
+        lipo_conversion_loss_energy_wh = float(
+            np.sum(
+                lipo_conversion_loss_powers
+                * valid_time_deltas
+            )
+            / 3600.0
+        )
+
+        nmc_conversion_loss_energy_wh = float(
+            np.sum(
+                nmc_conversion_loss_powers
+                * valid_time_deltas
+            )
+            / 3600.0
+        )
 
         metrics = {
             "total_distance_km": (
@@ -841,7 +917,46 @@ class BikeSimulator:
             "mechanical_energy_wh": (
                 mechanical_energy_wh
             ),
-                        "initial_battery_temperature_c": (
+            "mechanical_braking_energy_wh": (
+                mechanical_braking_energy_wh
+            ),
+            "lipo_recovered_energy_wh": (
+                lipo_recovered_energy_wh
+            ),
+            "nmc_recovered_energy_wh": (
+                nmc_recovered_energy_wh
+            ),
+            "lipo_resistor_energy_wh": (
+                lipo_resistor_energy_wh
+            ),
+            "nmc_resistor_energy_wh": (
+                nmc_resistor_energy_wh
+            ),
+            "lipo_friction_brake_energy_wh": (
+                lipo_friction_brake_energy_wh
+            ),
+            "nmc_friction_brake_energy_wh": (
+                nmc_friction_brake_energy_wh
+            ),
+            "lipo_conversion_loss_energy_wh": (
+                lipo_conversion_loss_energy_wh
+            ),
+            "nmc_conversion_loss_energy_wh": (
+                nmc_conversion_loss_energy_wh
+            ),
+            "max_lipo_resistor_power_w": float(
+                np.max(lipo_resistor_powers)
+            ),
+            "max_nmc_resistor_power_w": float(
+                np.max(nmc_resistor_powers)
+            ),
+            "max_lipo_resistor_temperature_c": float(
+                np.max(lipo_resistor_temperatures)
+            ),
+            "max_nmc_resistor_temperature_c": float(
+                np.max(nmc_resistor_temperatures)
+            ),
+            "initial_battery_temperature_c": (
                 initial_battery_temperature_c
             ),
             "max_lipo_temperature_c": float(
