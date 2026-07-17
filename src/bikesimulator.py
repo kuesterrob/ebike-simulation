@@ -54,29 +54,42 @@ class BikeSimulator:
                 "Die Filtergröße muss mindestens "
                 "1 sein."
             )
-
-    def run(self) -> dict:
-        """Führt die Simulation aus."""
-
-        logger.info(
-            "E-Bike-Simulation wird ausgeführt"
-        )
-
     
-        # GPS-Daten
+    def _prepare_route_data(self) -> dict:
+        """
+        Liest die GPS-Datei ein und berechnet alle
+        benötigten Routen- und Umgebungsdaten.
+        """
+
+        # GPS-Datei einlesen.
         reader = GPSReader()
 
         dataframe = reader.load_file(
             self.gps_file
         )
 
+        # 3D-Distanzen zwischen den GPS-Punkten berechnen.
         distances = reader.calculate_distances()
 
-        dataframe["time"] = pd.to_datetime(dataframe["time"], utc=True)
-        dataframe["time"] = dataframe["time"].dt.tz_convert("Europe/Vienna")
+        # Zeitstempel vereinheitlichen und in die Zeitzone Europe/Vienna umwandeln.
+        dataframe["time"] = pd.to_datetime(
+            dataframe["time"],
+            utc=True,
+        )
 
-        time = dataframe["time"].dt.tz_localize(None).to_numpy()
+        dataframe["time"] = (
+            dataframe["time"]
+            .dt.tz_convert("Europe/Vienna")
+        )
 
+        # Zeitzoneninformation entfernen und die Zeitwerte als NumPy-Array speichern.
+        time = (
+            dataframe["time"]
+            .dt.tz_localize(None)
+            .to_numpy()
+        )
+
+        # Zeitdifferenz zwischen zwei aufeinanderfolgenden GPS-Punkten in Sekunden berechnen.
         time_deltas = (
             dataframe["time"]
             .diff()
@@ -84,9 +97,11 @@ class BikeSimulator:
             .to_numpy()
         )
 
-        # Der erste Wert ist NaN.
+        # Der erste Wert ist NaN, weil es für den ersten GPS-Punkt noch keinen vorherigen Punkt gibt.
         time_deltas = time_deltas[1:]
 
+        # Gesamtstrecke berechnen.
+        # Der erste GPS-Punkt liegt bei 0 Metern.
         total_distance = np.concatenate(
             (
                 [0.0],
@@ -94,9 +109,9 @@ class BikeSimulator:
             )
         )
 
-        # Route
         route_calculator = RouteCalculator()
 
+        # Geschwindigkeit jedes Streckenabschnitts aus Distanz und Zeit berechnen.
         speeds = (
             route_calculator.calculate_speed(
                 time_deltas,
@@ -104,6 +119,7 @@ class BikeSimulator:
             )
         )
 
+        # Beschleunigung aus den Geschwindigkeiten und Zeitdifferenzen berechnen.
         accelerations = (
             route_calculator.calculate_acceleration(
                 time_deltas,
@@ -111,7 +127,7 @@ class BikeSimulator:
             )
         )
 
-        # Auffällige Beschleunigungswerte melden.
+        # Auffällige Beschleunigungswerte zählen und im Log ausgeben.
         outlier_count = int(
             np.sum(
                 np.abs(accelerations) > 3.0
@@ -125,39 +141,38 @@ class BikeSimulator:
                 outlier_count,
             )
 
-        elevations = dataframe[
-            "ele"
-        ].to_numpy(
-            dtype=float
+        # Höhenwerte der GPS-Punkte auslesen.
+        elevations = (
+            dataframe["ele"]
+            .to_numpy(dtype=float)
         )
 
-        temperatures = dataframe[
-            "temperature"
-        ].to_numpy(
-            dtype=float
+        # Temperaturwerte der GPS-Punkte auslesen.
+        temperatures = (
+            dataframe["temperature"]
+            .to_numpy(dtype=float)
         )
 
-
-        # Geschwindigkeit, Beschleunigung und Steigung beziehen sich immer auf den Abschnitt zwischen zwei GPS-Punkten.
-        # Aus beiden Werten wird die mittlere Höhe des Abschnitts gebildet.
+        # Geschwindigkeit, Beschleunigung und Steigung beziehen sich auf einen Streckenabschnitt.
+        # Deshalb wird aus der Höhe am Anfang und Ende des Abschnitts die mittlere Höhe gebildet.
         interval_elevations = (
             elevations[:-1]
             + elevations[1:]
         ) / 2.0
 
-        # Auch die Temperatur wird für jeden Streckenabschnitt aus dem Mittelwert von Start- und Endtemperatur bestimmt.
+        # Auch für die Temperatur wird der Mittelwert jedes Streckenabschnitts verwendet.
         interval_temperatures = (
             temperatures[:-1]
             + temperatures[1:]
         ) / 2.0
 
-        # Für jeden Streckenabschnitt wird aus der mittleren Temperatur und Höhe eine eigene Luftdichte berechnet.
+        # Luftdichte für jeden Streckenabschnitt aus Temperatur und Höhe berechnen.
         air_densities = calculate_air_density(
             temperatures_c=interval_temperatures,
             altitudes_m=interval_elevations,
         )
 
-
+        # Steigung für jeden Streckenabschnitt berechnen.
         slopes = (
             route_calculator.calculate_slope(
                 distances,
@@ -165,8 +180,10 @@ class BikeSimulator:
             )
         )
 
+       
         interval_time = time[1:]
 
+        # Steigung in Grad umrechnen.
         slope_degrees = np.degrees(
             np.arcsin(
                 np.clip(
@@ -177,7 +194,7 @@ class BikeSimulator:
             )
         )
 
-        # Ungültige oder negative Zeitintervalle entfernen.
+        # NaN- und unendliche Werte durch 0 ersetzen.
         valid_time_deltas = np.nan_to_num(
             time_deltas,
             nan=0.0,
@@ -185,12 +202,95 @@ class BikeSimulator:
             neginf=0.0,
         )
 
+        # Negative Zeitdifferenzen auf 0 begrenzen.
         valid_time_deltas = np.clip(
             valid_time_deltas,
             0.0,
             None,
         )
 
+        # Alle später benötigten Routenwerte werden gemeinsam in einem Dictionary zurückgegeben.
+        return {
+            "reader": reader,
+            "time": time,
+            "interval_time": interval_time,
+            "time_deltas": valid_time_deltas,
+            "distances": distances,
+            "total_distance": total_distance,
+            "elevations": elevations,
+            "temperatures": temperatures,
+            "interval_elevations": (
+                interval_elevations
+            ),
+            "interval_temperatures": (
+                interval_temperatures
+            ),
+            "air_densities": air_densities,
+            "speeds": speeds,
+            "accelerations": accelerations,
+            "slopes": slopes,
+            "slope_degrees": slope_degrees,
+        }
+
+    
+
+    def run(self) -> dict:
+        """Führt die Simulation aus."""
+
+        logger.info(
+            "E-Bike-Simulation wird ausgeführt"
+        )
+
+        # GPS-, Routen- und Umgebungsdaten vorbereiten.
+        route_data = self._prepare_route_data()
+
+        reader = route_data["reader"]
+
+        time = route_data["time"]
+
+        interval_time = route_data[
+            "interval_time"
+        ]
+
+        valid_time_deltas = route_data[
+            "time_deltas"
+        ]
+
+        distances = route_data["distances"]
+
+        total_distance = route_data[
+            "total_distance"
+        ]
+
+        elevations = route_data["elevations"]
+
+        temperatures = route_data[
+            "temperatures"
+        ]
+
+        interval_elevations = route_data[
+            "interval_elevations"
+        ]
+
+        interval_temperatures = route_data[
+            "interval_temperatures"
+        ]
+
+        air_densities = route_data[
+            "air_densities"
+        ]
+
+        speeds = route_data["speeds"]
+
+        accelerations = route_data[
+            "accelerations"
+        ]
+
+        slopes = route_data["slopes"]
+
+        slope_degrees = route_data[
+            "slope_degrees"
+        ]
 
         # Motor
         motor = Motor()
