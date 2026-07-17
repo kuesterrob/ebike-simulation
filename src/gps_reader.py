@@ -81,8 +81,12 @@ class GPSReader:
 
         return df
         
-    def calculate_distances(self)-> np.array:
-        "Berechnet die 3D-Distanz zwischen aufeinanderfolgenden GPS-Punkten."
+    def calculate_distances(self) -> np.array:
+        """
+        Berechnet die 3D-Distanz zwischen
+        aufeinanderfolgenden GPS-Punkten.
+        """
+
         if self.df.empty:
             raise ValueError(
                 "Es wurden noch keine GPS-Daten geladen."
@@ -91,9 +95,11 @@ class GPSReader:
         lat = self.df["lat"].to_numpy(
             dtype=float
         )
+
         lon = self.df["lon"].to_numpy(
             dtype=float
         )
+
         ele = self.df["ele"].to_numpy(
             dtype=float
         )
@@ -122,37 +128,96 @@ class GPSReader:
             raise ValueError(
                 "Mindestens 2 GPS-Punkte sind erforderlich."
             )
-        
-        prev = 0  #Variable für vorheriges Element initialisieren
+
+        # Die Ergebnisse werden zunächst lokal gesammelt.
+        # Dadurch werden bei einem erneuten Aufruf keine alten Werte weiterverwendet.
+        distances = []
+
+        total_h = 0.0
+        total_3d = 0.0
+        climb = 0.0
+        descent = 0.0
 
         for i in range(1, n):
-            d_h = self._haversine(lat[prev], lon[prev], lat[i], lon[i])
-    
+            prev = i - 1
+
+            # Horizontale Distanz zwischen den beiden GPS-Punkten.
+            d_h = self._haversine(
+                lat[prev],
+                lon[prev],
+                lat[i],
+                lon[i],
+            )
+
+            # Höhenunterschied zwischen den Punkten.
             dh = ele[i] - ele[prev]
 
-            self.distances = np.append(self.distances, sqrt(d_h ** 2 + dh ** 2))
-            self.total_h += d_h
-            self.total_3d += sqrt(d_h ** 2 + dh ** 2)
-    
+            # Räumliche Distanz unter Berücksichtigung des Höhenunterschieds.
+            distance_3d = sqrt(
+                d_h**2
+                + dh**2
+            )
+
+
+            distances.append(
+                distance_3d
+            )
+
+            total_h += d_h
+            total_3d += distance_3d
+
             if dh > 0:
-                self.climb += dh
-            else:
-                self.descent += abs(dh)
+                climb += dh
 
-            prev = i
+            elif dh < 0:
+                descent += abs(dh)
 
-        return(self.distances)
+        self.distances = np.asarray(
+            distances,
+            dtype=float,
+        )
+
+        self.total_h = total_h
+        self.total_3d = total_3d
+        self.climb = climb
+        self.descent = descent
+
+        return self.distances
     
     def get_stats(self) -> dict:
         "Gibt ein Dictionary mit Gesamtdistanz, horizontaler Distanz, Aufstieg und Abstieg zurück."
-        
+
         return {
-            "Distanz_3d_m": round(self.total_3d, 1),
-            "Distanz_vertikal_m": round(self.total_h, 1),
-            "Aufstieg_m": round(self.climb, 1),
-            "Abstieg_m": round(self.descent, 1),
-            "Punkte_gesamt": len(self.df),
-            "Horizontale_Distanz": sum(self.distances),
+            "Distanz_3d_m": round(
+                self.total_3d,
+                1,
+            ),
+
+            # Die gesamte vertikale Bewegung ergibt sich aus Aufstieg und Abstieg.
+            "Distanz_vertikal_m": round(
+                self.climb + self.descent,
+                1,
+            ),
+
+            "Aufstieg_m": round(
+                self.climb,
+                1,
+            ),
+
+            "Abstieg_m": round(
+                self.descent,
+                1,
+            ),
+
+            "Punkte_gesamt": len(
+                self.df
+            ),
+
+            # total_h enthält die mit der Haversine-Formel bestimmte horizontale Distanz.
+            "Horizontale_Distanz": round(
+                self.total_h,
+                1,
+            ),
         }
     
     def _haversine(self,lat1, lon1, lat2, lon2):
