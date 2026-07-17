@@ -164,10 +164,6 @@ class GPSReader:
         a = sin(dphi / 2) ** 2 + cos(phi1) * cos(phi2) * sin(dlam / 2) ** 2
         return 2 * R * asin(sqrt(a))
     
-    def get_dataframe(self) -> pd.dataframe:
-        return(self.df)
-
-    
     
     
 

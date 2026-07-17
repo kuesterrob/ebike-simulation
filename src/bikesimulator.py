@@ -11,6 +11,7 @@ from src.nmc_battery import NMCBatteryPack
 from src.air_density import calculate_air_density
 from src.gps_plot_route_on_map import GPSMap
 from src.reverse_geocoding import Reverse_Geocoder
+from src.get_weather_data import TripWeather
 
 
 logger = logging.getLogger(__name__)
@@ -106,6 +107,11 @@ class BikeSimulator:
         #Reverse Geocoding Daten fetchen
         geo = Reverse_Geocoder(dataframe)
         locations = geo.get_results()
+
+        #Wetterdaten pullen
+        weather_api = TripWeather(dataframe)
+        weather = weather_api.get_weather()
+        
 
         # Route
         route_calculator = RouteCalculator()
