@@ -13,6 +13,10 @@ from src.air_density import calculate_air_density
 from src.brake_resistor import BrakeResistor
 from src.regenerative_braking import RegenerativeBrakingController
 
+from src.gps_plot_route_on_map import GPSMap
+from src.reverse_geocoding import Reverse_Geocoder
+from src.get_weather_data import TripWeather
+from src.get_driving_direction import MovementDirection
 
 
 logger = logging.getLogger(__name__)
@@ -110,6 +114,29 @@ class BikeSimulator:
             )
         )
 
+        #Route auf Karte visualisieren
+        lats = dataframe["lat"].to_numpy(
+            dtype=float
+        )
+        lons = dataframe["lon"].to_numpy(
+            dtype=float
+        )
+        map_module = GPSMap(lats,lons)
+        map_module.save()
+
+        #Reverse Geocoding Daten fetchen
+        geo = Reverse_Geocoder(dataframe)
+        locations = geo.get_results()
+
+        #Wetterdaten pullen
+        weather_api = TripWeather(dataframe)
+        weather = weather_api.get_weather()
+        
+        #Bewegungsrichtungen berechnen
+        move_dir = MovementDirection(dataframe)
+        dataframe = move_dir.calculate()
+        
+        # Route
         route_calculator = RouteCalculator()
 
         # Geschwindigkeit jedes Streckenabschnitts aus Distanz und Zeit berechnen.

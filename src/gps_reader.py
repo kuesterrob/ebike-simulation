@@ -220,7 +220,7 @@ class GPSReader:
             ),
         }
     
-    def _haversine(self,lat1, lon1, lat2, lon2):
+    def haversine(self,lat1, lon1, lat2, lon2):
         "Horizontale Distanz in Metern (Haversine-Formel)."
         R = 6371000
         phi1, phi2 = radians(lat1), radians(lat2)
@@ -228,8 +228,6 @@ class GPSReader:
         dlam = radians(lon2 - lon1)
         a = sin(dphi / 2) ** 2 + cos(phi1) * cos(phi2) * sin(dlam / 2) ** 2
         return 2 * R * asin(sqrt(a))
-    
-
     
     
     
