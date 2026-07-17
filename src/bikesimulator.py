@@ -6,6 +6,7 @@ import pandas as pd
 from src.gps_reader import GPSReader
 from src.route_calculator import RouteCalculator
 from src.motor import Motor
+from src.battery_pack import BatteryPack
 from src.lipo_battery import LiPoBatteryPack
 from src.nmc_battery import NMCBatteryPack
 from src.air_density import calculate_air_density
@@ -491,6 +492,286 @@ class BikeSimulator:
             ),
         }
 
+    def _simulate_battery_variant(
+        self,
+        battery_name: str,
+        battery: BatteryPack,
+        brake_resistor: BrakeResistor,
+        regenerative_controller: RegenerativeBrakingController,
+        motor_data: dict,
+        route_data: dict,
+    ) -> dict:
+        """
+        Simuliert eine einzelne Akkuvariante über
+        alle Streckenabschnitte.
+
+        Die Methode kann sowohl für den LiPo- als
+        auch für den NMC-Akku verwendet werden.
+        """
+
+        # Motorströme für den normalen Antriebsfall.
+        drive_currents = motor_data[
+            "battery_currents"
+        ]
+
+        # Mechanische Bremsleistung der einzelnen Streckenabschnitte.
+        braking_powers = motor_data[
+            "braking_powers"
+        ]
+
+        # Dauer der einzelnen Streckenabschnitte.
+        durations = route_data[
+            "time_deltas"
+        ]
+
+        # Umgebungstemperatur der einzelnen Streckenabschnitte.
+        ambient_temperatures = route_data[
+            "interval_temperatures"
+        ]
+
+        # Listen zum Sammeln der Simulationsergebnisse.
+        voltages = []
+        temperatures = []
+        internal_resistances = []
+        currents = []
+
+        charge_powers = []
+        resistor_powers = []
+        resistor_temperatures = []
+        friction_brake_powers = []
+        conversion_loss_powers = []
+
+        # Jeden Streckenabschnitt nacheinander simulieren.
+        for (
+            drive_current,
+            braking_power,
+            duration,
+            ambient_temperature,
+        ) in zip(
+            drive_currents,
+            braking_powers,
+            durations,
+            ambient_temperatures,
+        ):
+            # NumPy-Zahlen in normale Python-Floats umwandeln.
+            drive_current = float(
+                drive_current
+            )
+
+            braking_power = float(
+                braking_power
+            )
+
+            duration = float(
+                duration
+            )
+
+            ambient_temperature = float(
+                ambient_temperature
+            )
+
+            # Verfügbare Bremsleistung auf Akku, Bremswiderstand und mechanische Bremse verteilen.
+            braking_result = (
+                regenerative_controller.distribute(
+                    braking_power_w=braking_power,
+                    duration=duration,
+                    battery=battery,
+                    brake_resistor=brake_resistor,
+                )
+            )
+
+            if braking_power > 0:
+                # Ein negativer Akkustrom bedeutet, dass der Akku geladen wird.
+                battery_current = braking_result[
+                    "battery_current_a"
+                ]
+
+            else:
+                # Im normalen Antriebsfall wird der positive Motorstrom verwendet.
+                battery_current = drive_current
+
+            # Ladezustand des Akkus aktualisieren.
+            battery.apply_current(
+                current=battery_current,
+                duration=duration,
+            )
+
+            # Akkutemperatur aktualisieren.
+            battery.update_temperature(
+                current=battery_current,
+                duration=duration,
+                ambient_temperature_c=(
+                    ambient_temperature
+                ),
+            )
+
+            # Bremswiderstand erwärmen oder während inaktiver Abschnitte abkühlen.
+            brake_resistor.update_temperature(
+                power_w=braking_result[
+                    "resistor_power_w"
+                ],
+                duration=duration,
+                ambient_temperature_c=(
+                    ambient_temperature
+                ),
+            )
+
+            # Spannung am Ende des Zeitintervalls speichern.
+            voltages.append(
+                battery.voltage(
+                    current=battery_current
+                )
+            )
+
+            # Akkutemperatur speichern.
+            temperatures.append(
+                battery.temperature_c
+            )
+
+            # Aktuellen Innenwiderstand speichern.
+            internal_resistances.append(
+                battery.effective_internal_resistance()
+            )
+
+            # Tatsächlichen Akkustrom speichern.
+            currents.append(
+                battery_current
+            )
+
+            # Vom Akku aufgenommene Ladeleistung speichern.
+            charge_powers.append(
+                braking_result[
+                    "battery_charge_power_w"
+                ]
+            )
+
+            # Leistung des Bremswiderstands speichern.
+            resistor_powers.append(
+                braking_result[
+                    "resistor_power_w"
+                ]
+            )
+
+            # Temperatur des Bremswiderstands speichern.
+            resistor_temperatures.append(
+                brake_resistor.temperature_c
+            )
+
+            # Leistung der mechanischen Bremse speichern.
+            friction_brake_powers.append(
+                braking_result[
+                    "friction_brake_power_w"
+                ]
+            )
+
+            # Umwandlungsverluste speichern.
+            conversion_loss_powers.append(
+                braking_result[
+                    "conversion_loss_power_w"
+                ]
+            )
+
+        # Listen nach Abschluss der Simulationin NumPy-Arrays umwandeln.
+        voltages = np.asarray(
+            voltages,
+            dtype=float,
+        )
+
+        temperatures = np.asarray(
+            temperatures,
+            dtype=float,
+        )
+
+        internal_resistances = np.asarray(
+            internal_resistances,
+            dtype=float,
+        )
+
+        currents = np.asarray(
+            currents,
+            dtype=float,
+        )
+
+        charge_powers = np.asarray(
+            charge_powers,
+            dtype=float,
+        )
+
+        resistor_powers = np.asarray(
+            resistor_powers,
+            dtype=float,
+        )
+
+        resistor_temperatures = np.asarray(
+            resistor_temperatures,
+            dtype=float,
+        )
+
+        friction_brake_powers = np.asarray(
+            friction_brake_powers,
+            dtype=float,
+        )
+
+        conversion_loss_powers = np.asarray(
+            conversion_loss_powers,
+            dtype=float,
+        )
+
+        # Positive Akkuleistung: -> Der Akku gibt Energie ab.
+        # Negative Akkuleistung: ->Der Akku wird durch Rekuperation geladen.
+        powers = (
+            voltages * currents
+        )
+
+        # Ungültige Spannungsergebnisse erkennen.
+        if not np.all(
+            np.isfinite(voltages)
+        ):
+            raise ValueError(
+                f"Die {battery_name}-Spannungen "
+                "enthalten ungültige Werte."
+            )
+
+        # Ungültige Akkutemperaturen erkennen.
+        if not np.all(
+            np.isfinite(temperatures)
+        ):
+            raise ValueError(
+                "Die Akkutemperaturen enthalten "
+                "ungültige Werte."
+            )
+
+        # Ungültige Innenwiderstände erkennen.
+        if not np.all(
+            np.isfinite(internal_resistances)
+        ):
+            raise ValueError(
+                "Die Akku-Innenwiderstände enthalten "
+                "ungültige Werte."
+            )
+
+        # Alle Ergebnisse der Akkuvariante gemeinsam zurückgeben
+        return {
+            "voltages": voltages,
+            "temperatures": temperatures,
+            "internal_resistances": (
+                internal_resistances
+            ),
+            "currents": currents,
+            "powers": powers,
+            "charge_powers": charge_powers,
+            "resistor_powers": resistor_powers,
+            "resistor_temperatures": (
+                resistor_temperatures
+            ),
+            "friction_brake_powers": (
+                friction_brake_powers
+            ),
+            "conversion_loss_powers": (
+                conversion_loss_powers
+            ),
+        }
+
     def run(self) -> dict:
         """Führt die Simulation aus."""
 
@@ -498,7 +779,7 @@ class BikeSimulator:
             "E-Bike-Simulation wird ausgeführt"
         )
 
-        # GPS-, Routen- und Umgebungsdaten vorbereiten.
+        # GPS-, Routen- und Umgebungsdaten vorbereiten
         route_data = self._prepare_route_data()
 
         reader = route_data["reader"]
@@ -616,374 +897,114 @@ class BikeSimulator:
         nmc_brake_resistor = components[
             "nmc_brake_resistor"
         ]
-        
 
-        lipo_voltages = []
-        nmc_voltages = []
-
-        lipo_temperatures = []
-        nmc_temperatures = []
-
-        lipo_internal_resistances = []
-        nmc_internal_resistances = []
-
-        lipo_currents = []
-        nmc_currents = []
-
-        lipo_charge_powers = []
-        nmc_charge_powers = []
-
-        lipo_resistor_powers = []
-        nmc_resistor_powers = []
-
-        lipo_resistor_temperatures = []
-        nmc_resistor_temperatures = []
-
-        lipo_friction_brake_powers = []
-        nmc_friction_brake_powers = []
-
-        lipo_conversion_loss_powers = []
-        nmc_conversion_loss_powers = []
-
-        for (
-            drive_current,
-            braking_power,
-            duration,
-            ambient_temperature,
-        ) in zip(
-            battery_currents,
-            braking_powers,
-            valid_time_deltas,
-            interval_temperatures,
-        ):
-            drive_current = float(drive_current)
-            braking_power = float(braking_power)
-            duration = float(duration)
-            ambient_temperature = float(
-                ambient_temperature
-            )
-
-            # Die Energieverteilung wird für beide Akkuvarianten getrennt berechnet, weil ihr SoC und ihre Spannung unterschiedlich sein können.
-            lipo_braking_result = (
-                regenerative_controller.distribute(
-                    braking_power_w=braking_power,
-                    duration=duration,
-                    battery=lipo,
-                    brake_resistor=(
-                        lipo_brake_resistor
-                    ),
-                )
-            )
-
-            nmc_braking_result = (
-                regenerative_controller.distribute(
-                    braking_power_w=braking_power,
-                    duration=duration,
-                    battery=nmc,
-                    brake_resistor=(
-                        nmc_brake_resistor
-                    ),
-                )
-            )
-
-            if braking_power > 0:
-                # Negative Ströme laden den Akku.
-                lipo_current = lipo_braking_result[
-                    "battery_current_a"
-                ]
-
-                nmc_current = nmc_braking_result[
-                    "battery_current_a"
-                ]
-
-            else:
-                # Im normalen Antriebsfall wird der positive Motorstrom verwendet.
-                lipo_current = drive_current
-                nmc_current = drive_current
-
-            # Ladezustand aktualisieren.
-            lipo.apply_current(
-                current=lipo_current,
-                duration=duration,
-            )
-
-            nmc.apply_current(
-                current=nmc_current,
-                duration=duration,
-            )
-
-            # Akkutemperatur aktualisieren.
-            lipo.update_temperature(
-                current=lipo_current,
-                duration=duration,
-                ambient_temperature_c=(
-                    ambient_temperature
-                ),
-            )
-
-            nmc.update_temperature(
-                current=nmc_current,
-                duration=duration,
-                ambient_temperature_c=(
-                    ambient_temperature
-                ),
-            )
-
-            # Bremswiderstand erwärmen beziehungsweise  während inaktiver Abschnitte abkühlen.
-            lipo_brake_resistor.update_temperature(
-                power_w=lipo_braking_result[
-                    "resistor_power_w"
-                ],
-                duration=duration,
-                ambient_temperature_c=(
-                    ambient_temperature
-                ),
-            )
-
-            nmc_brake_resistor.update_temperature(
-                power_w=nmc_braking_result[
-                    "resistor_power_w"
-                ],
-                duration=duration,
-                ambient_temperature_c=(
-                    ambient_temperature
-                ),
-            )
-
-            # Spannung am Ende des Zeitintervalls speichern.
-            lipo_voltages.append(
-                lipo.voltage(
-                    current=lipo_current
-                )
-            )
-
-            nmc_voltages.append(
-                nmc.voltage(
-                    current=nmc_current
-                )
-            )
-
-            lipo_temperatures.append(
-                lipo.temperature_c
-            )
-
-            nmc_temperatures.append(
-                nmc.temperature_c
-            )
-
-            lipo_internal_resistances.append(
-                lipo.effective_internal_resistance()
-            )
-
-            nmc_internal_resistances.append(
-                nmc.effective_internal_resistance()
-            )
-
-            # Tatsächliche Akkuströme speichern.
-            lipo_currents.append(
-                lipo_current
-            )
-
-            nmc_currents.append(
-                nmc_current
-            )
-
-            # Aufteilung der Bremsleistung speichern.
-            lipo_charge_powers.append(
-                lipo_braking_result[
-                    "battery_charge_power_w"
-                ]
-            )
-
-            nmc_charge_powers.append(
-                nmc_braking_result[
-                    "battery_charge_power_w"
-                ]
-            )
-
-            lipo_resistor_powers.append(
-                lipo_braking_result[
-                    "resistor_power_w"
-                ]
-            )
-
-            nmc_resistor_powers.append(
-                nmc_braking_result[
-                    "resistor_power_w"
-                ]
-            )
-
-            lipo_resistor_temperatures.append(
-                lipo_brake_resistor.temperature_c
-            )
-
-            nmc_resistor_temperatures.append(
-                nmc_brake_resistor.temperature_c
-            )
-
-            lipo_friction_brake_powers.append(
-                lipo_braking_result[
-                    "friction_brake_power_w"
-                ]
-            )
-
-            nmc_friction_brake_powers.append(
-                nmc_braking_result[
-                    "friction_brake_power_w"
-                ]
-            )
-
-            lipo_conversion_loss_powers.append(
-                lipo_braking_result[
-                    "conversion_loss_power_w"
-                ]
-            )
-
-            nmc_conversion_loss_powers.append(
-                nmc_braking_result[
-                    "conversion_loss_power_w"
-                ]
-            )
-
-        lipo_voltages = np.asarray(
-            lipo_voltages,
-            dtype=float,
+                # LiPo-Akku unabhängig simulieren.
+        lipo_data = self._simulate_battery_variant(
+            battery_name="LiPo",
+            battery=lipo,
+            brake_resistor=lipo_brake_resistor,
+            regenerative_controller=(
+                regenerative_controller
+            ),
+            motor_data=motor_data,
+            route_data=route_data,
         )
 
-        nmc_voltages = np.asarray(
-            nmc_voltages,
-            dtype=float,
+        # NMC-Akku unabhängig simulieren.
+        nmc_data = self._simulate_battery_variant(
+            battery_name="NMC",
+            battery=nmc,
+            brake_resistor=nmc_brake_resistor,
+            regenerative_controller=(
+                regenerative_controller
+            ),
+            motor_data=motor_data,
+            route_data=route_data,
         )
 
-        lipo_temperatures = np.asarray(
-            lipo_temperatures,
-            dtype=float,
-        )
+        # Die Ergebnisse werden vorerst wieder lokalen
+        # Variablen zugewiesen. Dadurch können die
+        # Kennzahlen und das Ergebnis-Dictionary
+        # zunächst unverändert bleiben.
+        lipo_voltages = lipo_data[
+            "voltages"
+        ]
 
-        nmc_temperatures = np.asarray(
-            nmc_temperatures,
-            dtype=float,
-        )
+        nmc_voltages = nmc_data[
+            "voltages"
+        ]
 
-        lipo_internal_resistances = np.asarray(
-            lipo_internal_resistances,
-            dtype=float,
-        )
+        lipo_temperatures = lipo_data[
+            "temperatures"
+        ]
 
-        nmc_internal_resistances = np.asarray(
-            nmc_internal_resistances,
-            dtype=float,
-        )
+        nmc_temperatures = nmc_data[
+            "temperatures"
+        ]
 
-        lipo_currents = np.asarray(
-            lipo_currents,
-            dtype=float,
-        )
+        lipo_internal_resistances = lipo_data[
+            "internal_resistances"
+        ]
 
-        nmc_currents = np.asarray(
-            nmc_currents,
-            dtype=float,
-        )
+        nmc_internal_resistances = nmc_data[
+            "internal_resistances"
+        ]
 
-        lipo_charge_powers = np.asarray(
-            lipo_charge_powers,
-            dtype=float,
-        )
+        lipo_currents = lipo_data[
+            "currents"
+        ]
 
-        nmc_charge_powers = np.asarray(
-            nmc_charge_powers,
-            dtype=float,
-        )
+        nmc_currents = nmc_data[
+            "currents"
+        ]
 
-        lipo_resistor_powers = np.asarray(
-            lipo_resistor_powers,
-            dtype=float,
-        )
+        lipo_powers = lipo_data[
+            "powers"
+        ]
 
-        nmc_resistor_powers = np.asarray(
-            nmc_resistor_powers,
-            dtype=float,
-        )
+        nmc_powers = nmc_data[
+            "powers"
+        ]
 
-        lipo_resistor_temperatures = np.asarray(
-            lipo_resistor_temperatures,
-            dtype=float,
-        )
+        lipo_charge_powers = lipo_data[
+            "charge_powers"
+        ]
 
-        nmc_resistor_temperatures = np.asarray(
-            nmc_resistor_temperatures,
-            dtype=float,
-        )
+        nmc_charge_powers = nmc_data[
+            "charge_powers"
+        ]
 
-        lipo_friction_brake_powers = np.asarray(
-            lipo_friction_brake_powers,
-            dtype=float,
-        )
+        lipo_resistor_powers = lipo_data[
+            "resistor_powers"
+        ]
 
-        nmc_friction_brake_powers = np.asarray(
-            nmc_friction_brake_powers,
-            dtype=float,
-        )
+        nmc_resistor_powers = nmc_data[
+            "resistor_powers"
+        ]
 
-        lipo_conversion_loss_powers = np.asarray(
-            lipo_conversion_loss_powers,
-            dtype=float,
-        )
+        lipo_resistor_temperatures = lipo_data[
+            "resistor_temperatures"
+        ]
 
-        nmc_conversion_loss_powers = np.asarray(
-            nmc_conversion_loss_powers,
-            dtype=float,
-        )
+        nmc_resistor_temperatures = nmc_data[
+            "resistor_temperatures"
+        ]
 
-        # Positive Akkuleistung:
-        # Der Akku gibt Energie ab.
-        # Negative Akkuleistung:
-        # Der Akku wird durch Rekuperation geladen.
-        lipo_powers = (
-            lipo_voltages
-            * lipo_currents
-        )
+        lipo_friction_brake_powers = lipo_data[
+            "friction_brake_powers"
+        ]
 
-        nmc_powers = (
-            nmc_voltages
-            * nmc_currents
-        )
+        nmc_friction_brake_powers = nmc_data[
+            "friction_brake_powers"
+        ]
 
-        
+        lipo_conversion_loss_powers = lipo_data[
+            "conversion_loss_powers"
+        ]
 
-        # Ungültige Batteriespannungen erkennen.
-        if not np.all(
-            np.isfinite(lipo_voltages)
-        ):
-            raise ValueError(
-                "Die LiPo-Spannungen enthalten "
-                "ungültige Werte."
-            )
-
-        if not np.all(
-            np.isfinite(nmc_voltages)
-        ):
-            raise ValueError(
-                "Die NMC-Spannungen enthalten "
-                "ungültige Werte."
-            )
-        
-        if not (
-            np.all(np.isfinite(lipo_temperatures)) and np.all(np.isfinite(nmc_temperatures))
-        ):
-            raise ValueError(
-                "Die Akkutemperaturen enthalten "
-                "ungültige Werte."
-            )
-
-        if not (
-            np.all(np.isfinite(lipo_internal_resistances)) and np.all(np.isfinite(nmc_internal_resistances))
-        ):
-            raise ValueError(
-                "Die Akku-Innenwiderstände enthalten "
-                "ungültige Werte."
-            )
-
+        nmc_conversion_loss_powers = nmc_data[
+            "conversion_loss_powers"
+        ]
 
         # Kennzahlen
         duration_seconds = float(
