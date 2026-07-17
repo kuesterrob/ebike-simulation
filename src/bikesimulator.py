@@ -1154,104 +1154,293 @@ class BikeSimulator:
 
         return metrics
 
+    def _build_results(
+        self,
+        route_data: dict,
+        motor_data: dict,
+        lipo_data: dict,
+        nmc_data: dict,
+        metrics: dict,
+    ) -> dict:
+        """
+        Erstellt die vollständige Ergebnisstruktur
+        der Simulation.
+        """
+
+        return {
+            "metrics": metrics,
+
+            "time": {
+                # Zeitpunkte aller GPS-Messungen.
+                "all": route_data[
+                    "time"
+                ],
+
+                # Zeitpunkte der einzelnen Streckenabschnitte.
+                "intervals": route_data[
+                    "interval_time"
+                ],
+
+                # Dauer der Streckenabschnitte in Sekunden.
+                "deltas_s": route_data[
+                    "time_deltas"
+                ],
+            },
+
+            "route": {
+                # Distanz der einzelnen Abschnitte.
+                "distance_m": route_data[
+                    "distances"
+                ],
+
+                # Kumulierte Gesamtstrecke.
+                "total_distance_m": route_data[
+                    "total_distance"
+                ],
+
+                # Ursprüngliche Höhenwerte.
+                "elevation_m": route_data[
+                    "elevations"
+                ],
+
+                "filtered_elevation_m": route_data[
+                    "elevations"
+                ],
+
+                "raw_speed_mps": route_data[
+                    "speeds"
+                ],
+
+                "speed_mps": route_data[
+                    "speeds"
+                ],
+
+                "raw_acceleration_mps2": route_data[
+                    "accelerations"
+                ],
+
+                "acceleration_mps2": route_data[
+                    "accelerations"
+                ],
+
+                # Steigung als Verhältnis.
+                "slope": route_data[
+                    "slopes"
+                ],
+
+                # Steigung in Grad.
+                "slope_degrees": route_data[
+                    "slope_degrees"
+                ],
+            },
+
+            "environment": {
+                # Temperaturwerte der GPS-Messpunkte.
+                "temperature_c": route_data[
+                    "temperatures"
+                ],
+
+                # Mittlere Temperatur jedes Streckenabschnitts.
+                "interval_temperature_c": route_data[
+                    "interval_temperatures"
+                ],
+
+                # Mittlere Höhe jedes Streckenabschnitts.
+                "interval_elevation_m": route_data[
+                    "interval_elevations"
+                ],
+
+                # Berechnete Luftdichte jedes Streckenabschnitts.
+                "air_density_kg_per_m3": route_data[
+                    "air_densities"
+                ],
+            },
+
+            "motor": {
+                # Gesamtkraft am Fahrrad.
+                "force_n": motor_data[
+                    "forces"
+                ],
+
+                # Rollwiderstandskraft.
+                "rolling_force_n": motor_data[
+                    "rolling_forces"
+                ],
+
+                # Positive Antriebsleistung.
+                "power_w": motor_data[
+                    "powers"
+                ],
+
+                # Vorzeichenbehaftete Motorleistung.
+                "signed_power_w": motor_data[
+                    "signed_powers"
+                ],
+
+                # Mechanischer Bremsleistungsbedarf.
+                "braking_power_w": motor_data[
+                    "braking_powers"
+                ],
+
+                # Positives Antriebsdrehmoment.
+                "torque_nm": motor_data[
+                    "torques"
+                ],
+
+                # Vom Motor berechneter Strom.
+                "current_a": motor_data[
+                    "motor_currents"
+                ],
+
+                # Für den Akku verwendeter
+                # positiver Antriebsstrom.
+                "battery_current_a": motor_data[
+                    "battery_currents"
+                ],
+            },
+
+            "battery": {
+                # Spannungen beider Akkuvarianten.
+                "lipo_voltage_v": lipo_data[
+                    "voltages"
+                ],
+
+                "nmc_voltage_v": nmc_data[
+                    "voltages"
+                ],
+
+                # Tatsächliche Lade- und
+                # Entladeströme.
+                "lipo_current_a": lipo_data[
+                    "currents"
+                ],
+
+                "nmc_current_a": nmc_data[
+                    "currents"
+                ],
+
+                # Ladezustände am Ende der Simulation.
+                "lipo_soc_percent": lipo_data[
+                    "soc_percent"
+                ],
+
+                "nmc_soc_percent": nmc_data[
+                    "soc_percent"
+                ],
+
+                # Temperaturverläufe.
+                "lipo_temperature_c": lipo_data[
+                    "temperatures"
+                ],
+
+                "nmc_temperature_c": nmc_data[
+                    "temperatures"
+                ],
+
+                # Innenwiderstandsverläufe.
+                "lipo_internal_resistance_ohm": (
+                    lipo_data[
+                        "internal_resistances"
+                    ]
+                ),
+
+                "nmc_internal_resistance_ohm": (
+                    nmc_data[
+                        "internal_resistances"
+                    ]
+                ),
+
+                # Akkuleistungen.
+                "lipo_power_w": lipo_data[
+                    "powers"
+                ],
+
+                "nmc_power_w": nmc_data[
+                    "powers"
+                ],
+            },
+
+            "braking": {
+                # Elektrische Ladeleistung der Akkus.
+                "lipo_charge_power_w": lipo_data[
+                    "charge_powers"
+                ],
+
+                "nmc_charge_power_w": nmc_data[
+                    "charge_powers"
+                ],
+
+                # Leistung der Bremswiderstände.
+                "lipo_resistor_power_w": lipo_data[
+                    "resistor_powers"
+                ],
+
+                "nmc_resistor_power_w": nmc_data[
+                    "resistor_powers"
+                ],
+
+                # Temperaturen der Bremswiderstände.
+                "lipo_resistor_temperature_c": (
+                    lipo_data[
+                        "resistor_temperatures"
+                    ]
+                ),
+
+                "nmc_resistor_temperature_c": (
+                    nmc_data[
+                        "resistor_temperatures"
+                    ]
+                ),
+
+                # Leistung der mechanischen Bremsen.
+                "lipo_friction_brake_power_w": (
+                    lipo_data[
+                        "friction_brake_powers"
+                    ]
+                ),
+
+                "nmc_friction_brake_power_w": (
+                    nmc_data[
+                        "friction_brake_powers"
+                    ]
+                ),
+
+                # Verluste bei der Umwandlung von mechanischer in elektrische Energie.
+                "lipo_conversion_loss_power_w": (
+                    lipo_data[
+                        "conversion_loss_powers"
+                    ]
+                ),
+
+                "nmc_conversion_loss_power_w": (
+                    nmc_data[
+                        "conversion_loss_powers"
+                    ]
+                ),
+            },
+        }
+
     def run(self) -> dict:
-        """Führt die Simulation aus."""
+        """
+        Führt die vollständige E-Bike-Simulation aus.
+        """
 
         logger.info(
             "E-Bike-Simulation wird ausgeführt"
         )
 
-        # GPS-, Routen- und Umgebungsdaten vorbereiten
+        # GPS-, Routen- und Umgebungsdaten vorbereiten.
         route_data = self._prepare_route_data()
-
-        reader = route_data["reader"]
-
-        time = route_data["time"]
-
-        interval_time = route_data[
-            "interval_time"
-        ]
-
-        valid_time_deltas = route_data[
-            "time_deltas"
-        ]
-
-        distances = route_data["distances"]
-
-        total_distance = route_data[
-            "total_distance"
-        ]
-
-        elevations = route_data["elevations"]
-
-        temperatures = route_data[
-            "temperatures"
-        ]
-
-        interval_elevations = route_data[
-            "interval_elevations"
-        ]
-
-        interval_temperatures = route_data[
-            "interval_temperatures"
-        ]
-
-        air_densities = route_data[
-            "air_densities"
-        ]
-
-        speeds = route_data["speeds"]
-
-        accelerations = route_data[
-            "accelerations"
-        ]
-
-        slopes = route_data["slopes"]
-
-        slope_degrees = route_data[
-            "slope_degrees"
-        ]
 
         # Motorwerte aus den Routendaten berechnen.
         motor_data = self._calculate_motor_data(
             route_data
         )
 
-  
-        motor = motor_data["motor"]
-
-        forces = motor_data["forces"]
-
-        rolling_forces = motor_data[
-            "rolling_forces"
-        ]
-
-        powers = motor_data["powers"]
-
-        signed_powers = motor_data[
-            "signed_powers"
-        ]
-
-        braking_powers = motor_data[
-            "braking_powers"
-        ]
-
-        torques = motor_data["torques"]
-
-        motor_currents = motor_data[
-            "motor_currents"
-        ]
-
-        battery_currents = motor_data[
-            "battery_currents"
-        ]
-
-        # Akkus und Rekuperationskomponenten
-
-        # Der Akku stand vor der Fahrt lange genug in derselben Umgebung.
-        #  Deshalb entspricht seine Anfangstemperatur dem ersten Temperaturwert der GPS-Datei.
+        # Annahme: Der Akku stand vor der Fahrt lange genug in derselben Umgebung. 
+        # Deshalb entspricht seine Anfangstemperatur dem ersten Temperaturwert der GPS-Datei.
         initial_battery_temperature_c = float(
-            temperatures[0]
+            route_data["temperatures"][0]
         )
 
         # Akkus, Rekuperationscontroller und Bremswiderstände erzeugen.
@@ -1263,7 +1452,7 @@ class BikeSimulator:
             )
         )
 
-
+        # Erzeugte Simulationskomponenten auslesen.
         lipo = components["lipo"]
 
         nmc = components["nmc"]
@@ -1280,11 +1469,13 @@ class BikeSimulator:
             "nmc_brake_resistor"
         ]
 
-                # LiPo-Akku unabhängig simulieren.
+        # LiPo-Variante simulieren.
         lipo_data = self._simulate_battery_variant(
             battery_name="LiPo",
             battery=lipo,
-            brake_resistor=lipo_brake_resistor,
+            brake_resistor=(
+                lipo_brake_resistor
+            ),
             regenerative_controller=(
                 regenerative_controller
             ),
@@ -1292,11 +1483,13 @@ class BikeSimulator:
             route_data=route_data,
         )
 
-        # NMC-Akku unabhängig simulieren.
+        # NMC-Variante simulieren.
         nmc_data = self._simulate_battery_variant(
             battery_name="NMC",
             battery=nmc,
-            brake_resistor=nmc_brake_resistor,
+            brake_resistor=(
+                nmc_brake_resistor
+            ),
             regenerative_controller=(
                 regenerative_controller
             ),
@@ -1304,91 +1497,7 @@ class BikeSimulator:
             route_data=route_data,
         )
 
-        # Die Ergebnisse werden vorerst wieder lokalen
-        # Variablen zugewiesen. Dadurch können die
-        # Kennzahlen und das Ergebnis-Dictionary
-        # zunächst unverändert bleiben.
-        lipo_voltages = lipo_data[
-            "voltages"
-        ]
-
-        nmc_voltages = nmc_data[
-            "voltages"
-        ]
-
-        lipo_temperatures = lipo_data[
-            "temperatures"
-        ]
-
-        nmc_temperatures = nmc_data[
-            "temperatures"
-        ]
-
-        lipo_internal_resistances = lipo_data[
-            "internal_resistances"
-        ]
-
-        nmc_internal_resistances = nmc_data[
-            "internal_resistances"
-        ]
-
-        lipo_currents = lipo_data[
-            "currents"
-        ]
-
-        nmc_currents = nmc_data[
-            "currents"
-        ]
-
-        lipo_powers = lipo_data[
-            "powers"
-        ]
-
-        nmc_powers = nmc_data[
-            "powers"
-        ]
-
-        lipo_charge_powers = lipo_data[
-            "charge_powers"
-        ]
-
-        nmc_charge_powers = nmc_data[
-            "charge_powers"
-        ]
-
-        lipo_resistor_powers = lipo_data[
-            "resistor_powers"
-        ]
-
-        nmc_resistor_powers = nmc_data[
-            "resistor_powers"
-        ]
-
-        lipo_resistor_temperatures = lipo_data[
-            "resistor_temperatures"
-        ]
-
-        nmc_resistor_temperatures = nmc_data[
-            "resistor_temperatures"
-        ]
-
-        lipo_friction_brake_powers = lipo_data[
-            "friction_brake_powers"
-        ]
-
-        nmc_friction_brake_powers = nmc_data[
-            "friction_brake_powers"
-        ]
-
-        lipo_conversion_loss_powers = lipo_data[
-            "conversion_loss_powers"
-        ]
-
-        nmc_conversion_loss_powers = nmc_data[
-            "conversion_loss_powers"
-        ]
-
-        # Kennzahlen berechnen.
+        # Zusammengefasste Kennzahlen berechnen.
         metrics = self._calculate_metrics(
             route_data=route_data,
             motor_data=motor_data,
@@ -1396,7 +1505,6 @@ class BikeSimulator:
             nmc_data=nmc_data,
         )
 
-        
         logger.info(
             "Simulation abgeschlossen: "
             "%.2f km, LiPo-SOC %.1f %%, "
@@ -1406,141 +1514,11 @@ class BikeSimulator:
             metrics["nmc_soc_percent"],
         )
 
-    
-        # Ergebnisse zurückgeben
-        return {
-            "metrics": metrics,
-
-            "time": {
-                "all": time,
-                "intervals": interval_time,
-                "deltas_s": valid_time_deltas,
-            },
-
-            "route": {
-                "distance_m": distances,
-                "total_distance_m": (
-                    total_distance
-                ),
-                "elevation_m": elevations,
-                "filtered_elevation_m": (
-                    elevations
-                ),
-                "raw_speed_mps": speeds,
-                "speed_mps": speeds,
-                "raw_acceleration_mps2": (
-                    accelerations
-                ),
-                "acceleration_mps2": (
-                    accelerations
-                ),
-                "slope": slopes,
-                "slope_degrees": (
-                    slope_degrees
-                ),
-            },
-
-            "environment": {
-                # Originale Temperaturwerte der GPS-Messpunkte.
-                "temperature_c": temperatures,
-
-                # Gemittelte Temperatur jedes Streckenabschnitts.
-                "interval_temperature_c": (
-                    interval_temperatures
-                ),
-
-                # Gemittelte Höhe jedes Streckenabschnitts.
-                "interval_elevation_m": (
-                    interval_elevations
-                ),
-
-                # Berechnete Luftdichte jedes Streckenabschnitts.
-                "air_density_kg_per_m3": (
-                    air_densities
-                ),
-            },
-
-            "motor": {
-                "force_n": forces,
-                "rolling_force_n": rolling_forces,
-                "power_w": powers,
-                "signed_power_w": signed_powers,
-                "braking_power_w": braking_powers,
-                "torque_nm": torques,
-                "current_a": motor_currents,
-                "battery_current_a": (
-                    battery_currents
-                ),
-            },
-
-            "battery": {
-                "lipo_voltage_v": (
-                    lipo_voltages
-                ),
-                "nmc_voltage_v": (
-                    nmc_voltages
-                ),
-                "lipo_current_a": (
-                    lipo_currents
-                ),
-                "nmc_current_a": (
-                    nmc_currents
-                ),
-                "lipo_soc_percent": (
-                    lipo.soc * 100.0
-                ),
-                "nmc_soc_percent": (
-                    nmc.soc * 100.0
-                ),
-                "lipo_temperature_c": (
-                    lipo_temperatures
-                ),
-                "nmc_temperature_c": (
-                    nmc_temperatures
-                ),
-                "lipo_internal_resistance_ohm": (
-                    lipo_internal_resistances
-                ),
-                "nmc_internal_resistance_ohm": (
-                    nmc_internal_resistances
-                ),
-                "lipo_power_w": (
-                    lipo_powers
-                ),
-                "nmc_power_w": (
-                    nmc_powers
-                ),
-            },
-            "braking": {
-                "lipo_charge_power_w": (
-                    lipo_charge_powers
-                ),
-                "nmc_charge_power_w": (
-                    nmc_charge_powers
-                ),
-                "lipo_resistor_power_w": (
-                    lipo_resistor_powers
-                ),
-                "nmc_resistor_power_w": (
-                    nmc_resistor_powers
-                ),
-                "lipo_resistor_temperature_c": (
-                    lipo_resistor_temperatures
-                ),
-                "nmc_resistor_temperature_c": (
-                    nmc_resistor_temperatures
-                ),
-                "lipo_friction_brake_power_w": (
-                    lipo_friction_brake_powers
-                ),
-                "nmc_friction_brake_power_w": (
-                    nmc_friction_brake_powers
-                ),
-                "lipo_conversion_loss_power_w": (
-                    lipo_conversion_loss_powers
-                ),
-                "nmc_conversion_loss_power_w": (
-                    nmc_conversion_loss_powers
-                ),
-            },
-        }
+        # Vollständige Ergebnisstruktur erstellen.
+        return self._build_results(
+            route_data=route_data,
+            motor_data=motor_data,
+            lipo_data=lipo_data,
+            nmc_data=nmc_data,
+            metrics=metrics,
+        )
