@@ -232,7 +232,114 @@ class BikeSimulator:
             "slope_degrees": slope_degrees,
         }
 
-    
+    def _calculate_motor_data(
+        self,
+        route_data: dict,
+    ) -> dict:
+        """
+        Berechnet alle Motorwerte aus den zuvor
+        vorbereiteten Routendaten.
+        """
+
+        # Für die Motorberechnung werden Geschwindigkeit, Beschleunigung, Steigung und Luftdichte benötigt.
+        speeds = route_data["speeds"]
+
+        accelerations = route_data[
+            "accelerations"
+        ]
+
+        slopes = route_data["slopes"]
+
+        air_densities = route_data[
+            "air_densities"
+        ]
+
+        # Motormodell erzeugen.
+        motor = Motor()
+
+        # Kräfte, Leistungen, Drehmomente und Ströme für alle Streckenabschnitte berechnen.
+        motor_results = motor.calculate(
+            speeds=speeds,
+            accelerations=accelerations,
+            slopes=slopes,
+            air_density_kg_per_m3=air_densities,
+        )
+
+        forces = motor_results[
+            "force_n"
+        ]
+
+        rolling_forces = motor_results[
+            "rolling_force_n"
+        ]
+
+        powers = motor_results[
+            "power_w"
+        ]
+
+        # Vorzeichenbehaftete Motorleistung:
+        # positiver Wert = Antrieb
+        # negativer Wert = Bremsen
+        signed_powers = motor_results[
+            "signed_power_w"
+        ]
+
+        # Der Bremsleistungsbedarf wird als positiver Betrag gespeichert.
+        braking_powers = motor_results[
+            "braking_power_w"
+        ]
+
+        torques = motor_results[
+            "torque_nm"
+        ]
+
+        motor_currents = motor_results[
+            "current_a"
+        ]
+
+        # Prüfen, ob unerwartet negative Motorströme vorhanden sind.
+        negative_current_count = int(
+            np.sum(
+                motor_currents < 0
+            )
+        )
+
+        if negative_current_count > 0:
+            logger.info(
+                "%d negative Motorströme werden "
+                "wegen fehlender Rekuperation auf "
+                "0 A gesetzt",
+                negative_current_count,
+            )
+
+        # Für den normalen Antriebsfall werden nur positive Motorströme an den Akku übergeben.
+        # Die Rekuperation wird separat über die Bremsleistung berechnet.
+        battery_currents = np.clip(
+            motor_currents,
+            0.0,
+            None,
+        )
+
+        # Ungültige Stromwerte werden auf 0 A gesetzt.
+        battery_currents = np.nan_to_num(
+            battery_currents,
+            nan=0.0,
+            posinf=0.0,
+            neginf=0.0,
+        )
+
+        # Alle später benötigten Motorwerte werden gemeinsam zurückgegeben.
+        return {
+            "motor": motor,
+            "forces": forces,
+            "rolling_forces": rolling_forces,
+            "powers": powers,
+            "signed_powers": signed_powers,
+            "braking_powers": braking_powers,
+            "torques": torques,
+            "motor_currents": motor_currents,
+            "battery_currents": battery_currents,
+        }
 
     def run(self) -> dict:
         """Führt die Simulation aus."""
@@ -292,74 +399,40 @@ class BikeSimulator:
             "slope_degrees"
         ]
 
-        # Motor
-        motor = Motor()
-
-        motor_results = motor.calculate(
-            speeds=speeds,
-            accelerations=accelerations,
-            slopes=slopes,
-            air_density_kg_per_m3=air_densities,
+        # Motorwerte aus den Routendaten berechnen.
+        motor_data = self._calculate_motor_data(
+            route_data
         )
 
-        forces = motor_results[
-            "force_n"
+  
+        motor = motor_data["motor"]
+
+        forces = motor_data["forces"]
+
+        rolling_forces = motor_data[
+            "rolling_forces"
         ]
 
-        rolling_forces = motor_results[
-            "rolling_force_n"
+        powers = motor_data["powers"]
+
+        signed_powers = motor_data[
+            "signed_powers"
         ]
 
-        powers = motor_results[
-            "power_w"
+        braking_powers = motor_data[
+            "braking_powers"
         ]
 
-        # Motorleistung mit Vorzeichen: positiv = Antrieb negativ = Bremsen
-        signed_powers = motor_results[
-            "signed_power_w"
+        torques = motor_data["torques"]
+
+        motor_currents = motor_data[
+            "motor_currents"
         ]
 
-        # Mechanischer Bremsleistungsbedarf als positiver Betrag.
-        braking_powers = motor_results[
-            "braking_power_w"
+        battery_currents = motor_data[
+            "battery_currents"
         ]
-
-        torques = motor_results[
-            "torque_nm"
-        ]
-
-        motor_currents = motor_results[
-            "current_a"
-        ]
-
-        # Negative Ströme werden nicht als Rekuperation verwendet.
-        negative_current_count = int(
-            np.sum(
-                motor_currents < 0
-            )
-        )
-
-        if negative_current_count > 0:
-            logger.info(
-                "%d negative Motorströme werden "
-                "wegen fehlender Rekuperation auf "
-                "0 A gesetzt",
-                negative_current_count,
-            )
-
-        battery_currents = np.clip(
-            motor_currents,
-            0.0,
-            None,
-        )
-
-        battery_currents = np.nan_to_num(
-            battery_currents,
-            nan=0.0,
-            posinf=0.0,
-            neginf=0.0,
-        )
-
+   
         # Akkus
 
         # Der Akku stand vor der Fahrt lange genug in derselben Umgebung. Seine Anfangstemperatu entspricht deshalb dem ersten Temperaturwert der CSV-Datei.
