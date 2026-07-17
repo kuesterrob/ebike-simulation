@@ -43,8 +43,14 @@ class RouteCalculator:
 
         return speeds
     
-    def calculate_acceleration(self, timedeltas: np.ndarray, speeds: np.ndarray) -> np.ndarray:
+    def calculate_acceleration(self, timedeltas: np.ndarray, speeds: np.ndarray, half_window: int = 5) -> np.ndarray:
         """Berechnet die Beschleunigung aus den GPS-Daten."""
+
+        if half_window < 1:
+            raise ValueError(
+                "Das Filterfenster muss mindestens "
+                "1 sein."
+            )
 
         if len(timedeltas) != len(speeds):
             raise ValueError(
@@ -68,37 +74,60 @@ class RouteCalculator:
             if delta_time > 0:
 
                 if i == 0:
-                    accelerations[i] = speeds[i] / delta_time 
+                    accelerations[i] = speeds[i] / delta_time
 
                 else:
-                    accelerations[i] = (speeds[i] - speeds[i - 1]) / delta_time
-            
+                    accelerations[i] = (
+                        speeds[i] - speeds[i - 1]
+                    ) / delta_time
+
             else:
-                raise ValueError(f"Zeitdifferenz darf nicht null oder kleiner sein. Index: {i}, Zeitdifferenz: {delta_time}")
-            
+                raise ValueError(
+                    f"Zeitdifferenz darf nicht null oder "
+                    f"kleiner sein. Index: {i}, "
+                    f"Zeitdifferenz: {delta_time}"
+                )
 
         threshold_factor = 2.0
-        half_window = 5         # Anzahl der Nachbarwerte, die für den Vergleich herangezogen werden.
 
-        filtered = accelerations.copy() #Kopie der Werte erstellen, damit gegen die Originalwerte verglichen werden kann.
+        filtered = accelerations.copy()  # Kopie der Werte erstellen, damit gegen die Originalwerte verglichen werden kann.
 
         for i in range(len(accelerations)):
             neighbors = []
-            for k in range(-half_window, half_window + 1):   #Nachbarliste erzeugen, wobei die Grenzen der Liste berücksichtigt werden.
-                if k != 0 and 0 <= i + k < len(accelerations):
-                    neighbors.append(accelerations[i + k])  
-            if not neighbors:                               #Abbrechen wenn keine Nachbarn vorhanden sind.
+
+            for k in range(
+                -half_window,
+                half_window + 1,
+            ):  # Nachbarliste erzeugen, wobei die Grenzen der Liste berücksichtigt werden.
+
+                if (
+                    k != 0
+                    and 0 <= i + k < len(accelerations)
+                ):
+                    neighbors.append(
+                        accelerations[i + k]
+                    )
+
+            if not neighbors:  # Abbrechen, wenn keine Nachbarn vorhanden sind.
                 continue
 
             avg = sum(neighbors) / len(neighbors)
 
-            if accelerations[i] > threshold_factor * avg or accelerations[i] < avg / threshold_factor:
+            if (
+                accelerations[i]
+                > threshold_factor * avg
+                or accelerations[i]
+                < avg / threshold_factor
+            ):
                 filtered[i] = avg
 
         return filtered
-    
-    
-    def calculate_slope(self, distances: np.ndarray, elevations: np.ndarray) -> np.ndarray:
+
+    def calculate_slope(
+        self,
+        distances: np.ndarray,
+        elevations: np.ndarray,
+    ) -> np.ndarray:
         """Berechnet die Steigung aus den GPS-Daten."""
 
         if len(elevations) != len(distances) + 1:
@@ -107,7 +136,9 @@ class RouteCalculator:
                 "mehr als die Distanzen enthalten."
             )
 
-        if not np.all(np.isfinite(distances)) or not np.all(
+        if not np.all(
+            np.isfinite(distances)
+        ) or not np.all(
             np.isfinite(elevations)
         ):
             raise ValueError(
@@ -121,7 +152,9 @@ class RouteCalculator:
             )
 
         zero_distance_count = int(
-            np.count_nonzero(distances == 0)
+            np.count_nonzero(
+                distances == 0
+            )
         )
 
         if zero_distance_count > 0:
@@ -130,15 +163,14 @@ class RouteCalculator:
                 "Distanz von 0 m",
                 zero_distance_count,
             )
-            
-        slopes = np.zeros(len(distances), dtype=float)
+
+        slopes = np.zeros(
+            len(distances),
+            dtype=float,
+        )
 
         for i in range(0, len(distances)):
             if distances[i] > 0:
-                slopes[i] = (elevations[i+1] - elevations[i]) / distances[i]
+                slopes[i] = (elevations[i + 1] - elevations[i]) / distances[i]
 
         return slopes
-
-    
-
-    

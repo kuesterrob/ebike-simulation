@@ -125,6 +125,7 @@ class BikeSimulator:
             route_calculator.calculate_acceleration(
                 time_deltas,
                 speeds,
+                half_window=self.filter_window,
             )
         )
 
