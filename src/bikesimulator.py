@@ -759,6 +759,9 @@ class BikeSimulator:
             ),
             "currents": currents,
             "powers": powers,
+            "soc_percent": (
+                battery.soc * 100.0
+            ),
             "charge_powers": charge_powers,
             "resistor_powers": resistor_powers,
             "resistor_temperatures": (
@@ -770,7 +773,386 @@ class BikeSimulator:
             "conversion_loss_powers": (
                 conversion_loss_powers
             ),
+            
         }
+
+    def _calculate_metrics(
+        self,
+        route_data: dict,
+        motor_data: dict,
+        lipo_data: dict,
+        nmc_data: dict,
+    ) -> dict:
+        """
+        Berechnet alle zusammengefassten Kennzahlen
+        der E-Bike-Simulation.
+        """
+
+        # Benötigte Routendaten auslesen.
+        reader = route_data["reader"]
+
+        valid_time_deltas = route_data[
+            "time_deltas"
+        ]
+
+        total_distance = route_data[
+            "total_distance"
+        ]
+
+        speeds = route_data["speeds"]
+
+        temperatures = route_data[
+            "temperatures"
+        ]
+
+        interval_temperatures = route_data[
+            "interval_temperatures"
+        ]
+
+        air_densities = route_data[
+            "air_densities"
+        ]
+
+        # Benötigte Motordaten auslesen.
+        motor = motor_data["motor"]
+
+        rolling_forces = motor_data[
+            "rolling_forces"
+        ]
+
+        powers = motor_data["powers"]
+
+        braking_powers = motor_data[
+            "braking_powers"
+        ]
+
+        battery_currents = motor_data[
+            "battery_currents"
+        ]
+
+        # Ergebnisse der LiPo-Simulation auslesen.
+        lipo_voltages = lipo_data[
+            "voltages"
+        ]
+
+        lipo_temperatures = lipo_data[
+            "temperatures"
+        ]
+
+        lipo_powers = lipo_data[
+            "powers"
+        ]
+
+        lipo_charge_powers = lipo_data[
+            "charge_powers"
+        ]
+
+        lipo_resistor_powers = lipo_data[
+            "resistor_powers"
+        ]
+
+        lipo_resistor_temperatures = lipo_data[
+            "resistor_temperatures"
+        ]
+
+        lipo_friction_brake_powers = lipo_data[
+            "friction_brake_powers"
+        ]
+
+        lipo_conversion_loss_powers = lipo_data[
+            "conversion_loss_powers"
+        ]
+
+        # Ergebnisse der NMC-Simulation auslesen.
+        nmc_voltages = nmc_data[
+            "voltages"
+        ]
+
+        nmc_temperatures = nmc_data[
+            "temperatures"
+        ]
+
+        nmc_powers = nmc_data[
+            "powers"
+        ]
+
+        nmc_charge_powers = nmc_data[
+            "charge_powers"
+        ]
+
+        nmc_resistor_powers = nmc_data[
+            "resistor_powers"
+        ]
+
+        nmc_resistor_temperatures = nmc_data[
+            "resistor_temperatures"
+        ]
+
+        nmc_friction_brake_powers = nmc_data[
+            "friction_brake_powers"
+        ]
+
+        nmc_conversion_loss_powers = nmc_data[
+            "conversion_loss_powers"
+        ]
+
+        # Gesamtdauer der Fahrt in Sekunden.
+        duration_seconds = float(
+            np.sum(valid_time_deltas)
+        )
+
+        # Gesamtdistanz in Metern.
+        distance_meters = float(
+            total_distance[-1]
+        )
+
+        # Durchschnittsgeschwindigkeit berechnen.
+        if duration_seconds > 0:
+            average_speed_kmh = (
+                distance_meters
+                / duration_seconds
+                * 3.6
+            )
+        else:
+            average_speed_kmh = 0.0
+
+        # Für die mechanische Antriebsenergie werden nur positive Motorleistungen verwendet.
+        positive_powers = np.clip(
+            powers,
+            0.0,
+            None,
+        )
+
+        # Mechanische Antriebsenergie:
+        mechanical_energy_wh = float(
+            np.sum(
+                positive_powers
+                * valid_time_deltas
+            )
+            / 3600.0 # wandelt Ws in Wh um.
+        )
+
+        # Gesamte mechanische Bremsenergie des gemessenen Fahrprofils.
+        mechanical_braking_energy_wh = float(
+            np.sum(
+                braking_powers
+                * valid_time_deltas
+            )
+            / 3600.0
+        )
+
+        # Elektrische Energie, die während Rekuperation in den LiPo-Akku geladen wird.
+        lipo_recovered_energy_wh = float(
+            np.sum(
+                lipo_charge_powers
+                * valid_time_deltas
+            )
+            / 3600.0
+        )
+
+        # Elektrische Energie, die während der Rekuperation in den NMC-Akku geladen wird.
+        nmc_recovered_energy_wh = float(
+            np.sum(
+                nmc_charge_powers
+                * valid_time_deltas
+            )
+            / 3600.0
+        )
+
+        # Im LiPo-Bremswiderstand in Wärme umgewandelte Energie.
+        lipo_resistor_energy_wh = float(
+            np.sum(
+                lipo_resistor_powers
+                * valid_time_deltas
+            )
+            / 3600.0
+        )
+
+        # Im NMC-Bremswiderstand in Wärme  umgewandelte Energie.
+        nmc_resistor_energy_wh = float(
+            np.sum(
+                nmc_resistor_powers
+                * valid_time_deltas
+            )
+            / 3600.0
+        )
+
+        # Energie, die bei der LiPo-Variante von der mechanischen Bremse aufgenommen wird.
+        lipo_friction_brake_energy_wh = float(
+            np.sum(
+                lipo_friction_brake_powers
+                * valid_time_deltas
+            )
+            / 3600.0
+        )
+
+        # Energie, die bei der NMC-Variante von der mechanischen Bremse aufgenommen wird.
+        nmc_friction_brake_energy_wh = float(
+            np.sum(
+                nmc_friction_brake_powers
+                * valid_time_deltas
+            )
+            / 3600.0
+        )
+
+        # Umwandlungsverluste der LiPo-Variante.
+        lipo_conversion_loss_energy_wh = float(
+            np.sum(
+                lipo_conversion_loss_powers
+                * valid_time_deltas
+            )
+            / 3600.0
+        )
+
+        # Umwandlungsverluste der NMC-Variante.
+        nmc_conversion_loss_energy_wh = float(
+            np.sum(
+                nmc_conversion_loss_powers
+                * valid_time_deltas
+            )
+            / 3600.0
+        )
+
+        # Der Akku übernimmt zu Beginn die erste gemessene Umgebungstemperatur.
+        initial_battery_temperature_c = float(
+            temperatures[0]
+        )
+
+        # Alle Kennzahlen in einem Dictionary sammeln.
+        metrics = {
+            "total_distance_km": (
+                distance_meters / 1000.0
+            ),
+            "duration_minutes": (
+                duration_seconds / 60.0
+            ),
+            "average_speed_kmh": (
+                average_speed_kmh
+            ),
+            "max_speed_kmh": float(
+                np.max(speeds) * 3.6
+            ),
+            "ascent_m": float(
+                reader.climb
+            ),
+            "descent_m": float(
+                reader.descent
+            ),
+            "rolling_resistance_coefficient": float(
+                motor.rolling_resistance_coefficient
+            ),
+            "average_rolling_force_n": float(
+                np.mean(rolling_forces)
+            ),
+            "max_rolling_force_n": float(
+                np.max(rolling_forces)
+            ),
+            "average_temperature_c": float(
+                np.mean(interval_temperatures)
+            ),
+            "min_temperature_c": float(
+                np.min(interval_temperatures)
+            ),
+            "max_temperature_c": float(
+                np.max(interval_temperatures)
+            ),
+            "average_air_density_kg_per_m3": float(
+                np.mean(air_densities)
+            ),
+            "min_air_density_kg_per_m3": float(
+                np.min(air_densities)
+            ),
+            "max_air_density_kg_per_m3": float(
+                np.max(air_densities)
+            ),
+            "max_power_w": float(
+                np.max(positive_powers)
+            ),
+            "max_motor_current_a": float(
+                np.max(battery_currents)
+            ),
+            "mechanical_energy_wh": (
+                mechanical_energy_wh
+            ),
+            "mechanical_braking_energy_wh": (
+                mechanical_braking_energy_wh
+            ),
+            "lipo_recovered_energy_wh": (
+                lipo_recovered_energy_wh
+            ),
+            "nmc_recovered_energy_wh": (
+                nmc_recovered_energy_wh
+            ),
+            "lipo_resistor_energy_wh": (
+                lipo_resistor_energy_wh
+            ),
+            "nmc_resistor_energy_wh": (
+                nmc_resistor_energy_wh
+            ),
+            "lipo_friction_brake_energy_wh": (
+                lipo_friction_brake_energy_wh
+            ),
+            "nmc_friction_brake_energy_wh": (
+                nmc_friction_brake_energy_wh
+            ),
+            "lipo_conversion_loss_energy_wh": (
+                lipo_conversion_loss_energy_wh
+            ),
+            "nmc_conversion_loss_energy_wh": (
+                nmc_conversion_loss_energy_wh
+            ),
+            "max_lipo_resistor_power_w": float(
+                np.max(lipo_resistor_powers)
+            ),
+            "max_nmc_resistor_power_w": float(
+                np.max(nmc_resistor_powers)
+            ),
+            "max_lipo_resistor_temperature_c": float(
+                np.max(
+                    lipo_resistor_temperatures
+                )
+            ),
+            "max_nmc_resistor_temperature_c": float(
+                np.max(
+                    nmc_resistor_temperatures
+                )
+            ),
+            "initial_battery_temperature_c": (
+                initial_battery_temperature_c
+            ),
+            "max_lipo_temperature_c": float(
+                np.max(lipo_temperatures)
+            ),
+            "max_nmc_temperature_c": float(
+                np.max(nmc_temperatures)
+            ),
+            "final_lipo_temperature_c": float(
+                lipo_temperatures[-1]
+            ),
+            "final_nmc_temperature_c": float(
+                nmc_temperatures[-1]
+            ),
+            "max_lipo_battery_power_w": float(
+                np.max(lipo_powers)
+            ),
+            "max_nmc_battery_power_w": float(
+                np.max(nmc_powers)
+            ),
+            "lipo_soc_percent": (
+                lipo_data["soc_percent"]
+            ),
+            "nmc_soc_percent": (
+                nmc_data["soc_percent"]
+            ),
+            "min_lipo_voltage_v": float(
+                np.min(lipo_voltages)
+            ),
+            "min_nmc_voltage_v": float(
+                np.min(nmc_voltages)
+            ),
+        }
+
+        return metrics
 
     def run(self) -> dict:
         """Führt die Simulation aus."""
@@ -1006,243 +1388,15 @@ class BikeSimulator:
             "conversion_loss_powers"
         ]
 
-        # Kennzahlen
-        duration_seconds = float(
-            np.sum(valid_time_deltas)
+        # Kennzahlen berechnen.
+        metrics = self._calculate_metrics(
+            route_data=route_data,
+            motor_data=motor_data,
+            lipo_data=lipo_data,
+            nmc_data=nmc_data,
         )
 
-        distance_meters = float(
-            total_distance[-1]
-        )
-
-        if duration_seconds > 0:
-            average_speed_kmh = (
-                distance_meters
-                / duration_seconds
-                * 3.6
-            )
-        else:
-            average_speed_kmh = 0.0
-
-        positive_powers = np.clip(
-            powers,
-            0.0,
-            None,
-        )
-
-        mechanical_energy_wh = float(
-            np.sum(
-                positive_powers
-                * valid_time_deltas
-            )
-            / 3600.0
-        )
-        # Gesamte mechanische Bremsenergie, die durch das gemessene Fahrprofil angefordert wird.
-        mechanical_braking_energy_wh = float(
-            np.sum(
-                braking_powers
-                * valid_time_deltas
-            )
-            / 3600.0
-        )
-
-        # Elektrische Energie, die in den Akku geladen wird.
-        lipo_recovered_energy_wh = float(
-            np.sum(
-                lipo_charge_powers
-                * valid_time_deltas
-            )
-            / 3600.0
-        )
-
-        nmc_recovered_energy_wh = float(
-            np.sum(
-                nmc_charge_powers
-                * valid_time_deltas
-            )
-            / 3600.0
-        )
-
-        # Energie, die im Bremswiderstand in Wärme umgewandelt wird.
-        lipo_resistor_energy_wh = float(
-            np.sum(
-                lipo_resistor_powers
-                * valid_time_deltas
-            )
-            / 3600.0
-        )
-
-        nmc_resistor_energy_wh = float(
-            np.sum(
-                nmc_resistor_powers
-                * valid_time_deltas
-            )
-            / 3600.0
-        )
-
-        # Energie, die von der mechanischen Bremse aufgenommen werden muss.
-        lipo_friction_brake_energy_wh = float(
-            np.sum(
-                lipo_friction_brake_powers
-                * valid_time_deltas
-            )
-            / 3600.0
-        )
-
-        nmc_friction_brake_energy_wh = float(
-            np.sum(
-                nmc_friction_brake_powers
-                * valid_time_deltas
-            )
-            / 3600.0
-        )
-
-        # Verluste bei der Umwandlung von mechanischer in elektrische Energie.
-        lipo_conversion_loss_energy_wh = float(
-            np.sum(
-                lipo_conversion_loss_powers
-                * valid_time_deltas
-            )
-            / 3600.0
-        )
-
-        nmc_conversion_loss_energy_wh = float(
-            np.sum(
-                nmc_conversion_loss_powers
-                * valid_time_deltas
-            )
-            / 3600.0
-        )
-
-        metrics = {
-            "total_distance_km": (
-                distance_meters / 1000.0
-            ),
-            "duration_minutes": (
-                duration_seconds / 60.0
-            ),
-            "average_speed_kmh": (
-                average_speed_kmh
-            ),
-            "max_speed_kmh": float(
-                np.max(speeds) * 3.6
-            ),
-            "ascent_m": float(
-                reader.climb
-            ),
-            "descent_m": float(
-                reader.descent
-            ),
-            "rolling_resistance_coefficient": float(
-                motor.rolling_resistance_coefficient
-            ),
-            "average_rolling_force_n": float(
-                np.mean(rolling_forces)
-            ),
-            "max_rolling_force_n": float(
-                np.max(rolling_forces)
-            ),
-            "average_temperature_c": float(
-                np.mean(interval_temperatures)
-            ),
-            "min_temperature_c": float(
-                np.min(interval_temperatures)
-            ),
-            "max_temperature_c": float(
-                np.max(interval_temperatures)
-            ),
-            "average_air_density_kg_per_m3": float(
-                np.mean(air_densities)
-            ),
-            "min_air_density_kg_per_m3": float(
-                np.min(air_densities)
-            ),
-            "max_air_density_kg_per_m3": float(
-                np.max(air_densities)
-            ),
-            "max_power_w": float(
-                np.max(positive_powers)
-            ),
-            "max_motor_current_a": float(
-                np.max(battery_currents)
-            ),
-            "mechanical_energy_wh": (
-                mechanical_energy_wh
-            ),
-            "mechanical_braking_energy_wh": (
-                mechanical_braking_energy_wh
-            ),
-            "lipo_recovered_energy_wh": (
-                lipo_recovered_energy_wh
-            ),
-            "nmc_recovered_energy_wh": (
-                nmc_recovered_energy_wh
-            ),
-            "lipo_resistor_energy_wh": (
-                lipo_resistor_energy_wh
-            ),
-            "nmc_resistor_energy_wh": (
-                nmc_resistor_energy_wh
-            ),
-            "lipo_friction_brake_energy_wh": (
-                lipo_friction_brake_energy_wh
-            ),
-            "nmc_friction_brake_energy_wh": (
-                nmc_friction_brake_energy_wh
-            ),
-            "lipo_conversion_loss_energy_wh": (
-                lipo_conversion_loss_energy_wh
-            ),
-            "nmc_conversion_loss_energy_wh": (
-                nmc_conversion_loss_energy_wh
-            ),
-            "max_lipo_resistor_power_w": float(
-                np.max(lipo_resistor_powers)
-            ),
-            "max_nmc_resistor_power_w": float(
-                np.max(nmc_resistor_powers)
-            ),
-            "max_lipo_resistor_temperature_c": float(
-                np.max(lipo_resistor_temperatures)
-            ),
-            "max_nmc_resistor_temperature_c": float(
-                np.max(nmc_resistor_temperatures)
-            ),
-            "initial_battery_temperature_c": (
-                initial_battery_temperature_c
-            ),
-            "max_lipo_temperature_c": float(
-                np.max(lipo_temperatures)
-            ),
-            "max_nmc_temperature_c": float(
-                np.max(nmc_temperatures)
-            ),
-            "final_lipo_temperature_c": float(
-                lipo_temperatures[-1]
-            ),
-            "final_nmc_temperature_c": float(
-                nmc_temperatures[-1]
-            ),
-            "max_lipo_battery_power_w": float(
-                np.max(lipo_powers)
-            ),
-            "max_nmc_battery_power_w": float(
-                np.max(nmc_powers)
-            ),
-            "lipo_soc_percent": (
-                lipo.soc * 100.0
-            ),
-            "nmc_soc_percent": (
-                nmc.soc * 100.0
-            ),
-            "min_lipo_voltage_v": float(
-                np.min(lipo_voltages)
-            ),
-            "min_nmc_voltage_v": float(
-                np.min(nmc_voltages)
-            ),
-        }
-
+        
         logger.info(
             "Simulation abgeschlossen: "
             "%.2f km, LiPo-SOC %.1f %%, "
