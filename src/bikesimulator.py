@@ -9,6 +9,7 @@ from src.motor import Motor
 from src.lipo_battery import LiPoBatteryPack
 from src.nmc_battery import NMCBatteryPack
 from src.air_density import calculate_air_density
+from src.gps_plot_route_on_map import GPSMap
 
 
 logger = logging.getLogger(__name__)
@@ -90,6 +91,18 @@ class BikeSimulator:
                 np.cumsum(distances),
             )
         )
+    
+        #Route auf Karte visualisieren
+        gps_data = reader.get_dataframe()
+        lats = gps_data["lat"].to_numpy(
+            dtype=float
+        )
+        lons = gps_data["lon"].to_numpy(
+            dtype=float
+        )
+        map_module = GPSMap(lats,lons)
+        map_module.save()
+
 
         # Route
         route_calculator = RouteCalculator()
@@ -620,8 +633,7 @@ class BikeSimulator:
             metrics["lipo_soc_percent"],
             metrics["nmc_soc_percent"],
         )
-
-    
+        
         # Ergebnisse zurückgeben
         return {
             "metrics": metrics,

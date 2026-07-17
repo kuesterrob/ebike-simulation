@@ -126,7 +126,7 @@ class GPSReader:
         prev = 0  #Variable für vorheriges Element initialisieren
 
         for i in range(1, n):
-            d_h = self._haversine(lat[prev], lon[prev], lat[i], lon[i])
+            d_h = self.haversine(lat[prev], lon[prev], lat[i], lon[i])
     
             dh = ele[i] - ele[prev]
 
@@ -155,7 +155,7 @@ class GPSReader:
             "Horizontale_Distanz": sum(self.distances),
         }
     
-    def _haversine(self,lat1, lon1, lat2, lon2):
+    def haversine(self,lat1, lon1, lat2, lon2):
         "Horizontale Distanz in Metern (Haversine-Formel)."
         R = 6371000
         phi1, phi2 = radians(lat1), radians(lat2)
@@ -164,6 +164,8 @@ class GPSReader:
         a = sin(dphi / 2) ** 2 + cos(phi1) * cos(phi2) * sin(dlam / 2) ** 2
         return 2 * R * asin(sqrt(a))
     
+    def get_dataframe(self) -> pd.dataframe:
+        return(self.df)
 
     
     
