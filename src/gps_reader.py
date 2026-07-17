@@ -142,7 +142,7 @@ class GPSReader:
             prev = i - 1
 
             # Horizontale Distanz zwischen den beiden GPS-Punkten.
-            d_h = self._haversine(
+            d_h = self.haversine(
                 lat[prev],
                 lon[prev],
                 lat[i],
