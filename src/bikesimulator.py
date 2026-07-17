@@ -10,6 +10,7 @@ from src.lipo_battery import LiPoBatteryPack
 from src.nmc_battery import NMCBatteryPack
 from src.air_density import calculate_air_density
 from src.gps_plot_route_on_map import GPSMap
+from src.reverse_geocoding import Reverse_Geocoder
 
 
 logger = logging.getLogger(__name__)
@@ -93,16 +94,18 @@ class BikeSimulator:
         )
     
         #Route auf Karte visualisieren
-        gps_data = reader.get_dataframe()
-        lats = gps_data["lat"].to_numpy(
+        lats = dataframe["lat"].to_numpy(
             dtype=float
         )
-        lons = gps_data["lon"].to_numpy(
+        lons = dataframe["lon"].to_numpy(
             dtype=float
         )
         map_module = GPSMap(lats,lons)
         map_module.save()
 
+        #Reverse Geocoding Daten fetchen
+        geo = Reverse_Geocoder(dataframe)
+        locations = geo.get_results()
 
         # Route
         route_calculator = RouteCalculator()
