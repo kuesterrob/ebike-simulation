@@ -1,6 +1,35 @@
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import logging
 
+logger = logging.getLogger(__name__)
+
+# Kurze Bezeichnungen für die Auswahl über die Kommandozeile.
+PLOT_OPTIONS = {
+    "speed": "Geschwindigkeit",
+    "acceleration": "Beschleunigung",
+    "slope": "Steigung",
+    "air_density": "Luftdichte",
+    "distance": "Zurückgelegte Strecke",
+    "drive_force": "Antriebskraft",
+    "motor_power": "Motorleistung",
+    "torque": "Drehmoment",
+    "motor_current": "Motorstrom",
+    "battery_current": "Akkustrom",
+    "battery_voltage": "Batteriespannung",
+    "battery_temperature": "Akkutemperatur",
+    "battery_power": "Akkuleistung",
+    "battery_resistance": "Akku-Innenwiderstand",
+    "braking_demand": "Bremsleistungsbedarf",
+    "regeneration_power": "Rekuperationsleistung",
+    "resistor_power": "Bremswiderstandsleistung",
+    "resistor_temperature": (
+        "Bremswiderstandstemperatur"
+    ),
+    "friction_brake_power": (
+        "Mechanische Bremsleistung"
+    ),
+}
 
 def get_plot_definitions(
     results: dict,
@@ -373,3 +402,78 @@ def create_result_figure(
         x_label=plot_data["x_label"],
         y_label=plot_data["y_label"],
     )
+
+def get_plot_options() -> dict[str, str]:
+    """
+    Gibt die verfügbaren Kurzbezeichnungen und
+    die zugehörigen Plotnamen zurück.
+    """
+
+    return PLOT_OPTIONS.copy()
+
+
+def show_result_figures(
+    results: dict,
+    selected_plot_ids: list[str],
+) -> None:
+    """
+    Zeigt die ausgewählten Diagramme nacheinander an.
+    """
+
+    available_plot_names = set(
+        get_plot_names(results)
+    )
+
+    logger.info(
+        "Bereite %d Ergebnisdiagramme vor",
+        len(selected_plot_ids),
+    )
+
+    for plot_id in selected_plot_ids:
+        if plot_id not in PLOT_OPTIONS:
+            available_ids = ", ".join(
+                PLOT_OPTIONS.keys()
+            )
+
+            raise ValueError(
+                f"Unbekannter Plot: '{plot_id}'. "
+                f"Verfügbare Plots: {available_ids}"
+            )
+
+        plot_name = PLOT_OPTIONS[
+            plot_id
+        ]
+
+        # Zusätzliche Prüfung, damit die Zuordnung  tatsächlich zu einer Plotdefinition gehört.
+        if plot_name not in available_plot_names:
+            raise ValueError(
+                "Für den Plot "
+                f"'{plot_id}' fehlt die Definition "
+                f"'{plot_name}'."
+            )
+
+        figure = None
+
+        try:
+            logger.info(
+                "Zeige Diagramm: %s",
+                plot_name,
+            )
+
+            figure = create_result_figure(
+                results=results,
+                plot_name=plot_name,
+            )
+
+            plt.show()
+
+        except Exception as error:
+            raise RuntimeError(
+                f"Das Diagramm '{plot_name}' "
+                "konnte nicht erstellt oder "
+                "angezeigt werden."
+            ) from error
+
+        finally:
+            if figure is not None:
+                plt.close(figure)

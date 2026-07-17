@@ -1,10 +1,14 @@
 import logging
 from pathlib import Path
-import matplotlib.pyplot as plt
+
 from src.bikesimulator import BikeSimulator
 from src.plotter import (
-    create_result_figure,
-    get_plot_names,
+    get_plot_options,
+    show_result_figures,
+)
+from src.reporting.console import (
+    get_metric_section_names,
+    print_selected_metrics,
 )
 
 
@@ -18,6 +22,19 @@ GPS_FILE = (
 
 
 logger = logging.getLogger(__name__)
+
+class UserCancelledError(Exception):
+    """Wird ausgelöst, wenn der Benutzer das Menü abbricht."""
+
+
+# Bezeichnungen für die Auswahl der Terminalausgaben.
+METRIC_LABELS = {
+    "route": "Route und Fahrdaten",
+    "environment": "Umgebungsdaten",
+    "motor": "Motor und Antrieb",
+    "battery": "Akkudaten",
+    "regeneration": "Rekuperation und Bremsen",
+}
 
 
 def configure_logging() -> None:
@@ -38,276 +55,152 @@ def configure_logging() -> None:
     )
 
 
-def print_metrics(
-    metrics: dict,
-) -> None:
-    """Gibt die wichtigsten Ergebnisse aus."""
+def get_metric_options() -> dict[str, str]:
+    """
+    Erstellt die auswählbaren Kennzahlengruppen.
+    """
 
-    print("\n--- Routendaten ---")
-
-    print(
-        f"Gesamtstrecke: "
-        f"{metrics['total_distance_km']:.2f} km"
-    )
-
-    print(
-        f"Fahrzeit: "
-        f"{metrics['duration_minutes']:.1f} min"
-    )
-
-    print(
-        f"Durchschnittsgeschwindigkeit: "
-        f"{metrics['average_speed_kmh']:.1f} km/h"
-    )
-
-    print(
-        f"Maximale Geschwindigkeit: "
-        f"{metrics['max_speed_kmh']:.1f} km/h"
-    )
-
-    print(
-        f"Aufstieg: "
-        f"{metrics['ascent_m']:.0f} m"
-    )
-
-    print(
-        f"Abstieg: "
-        f"{metrics['descent_m']:.0f} m"
-    )
-
-    print("\n--- Umgebung ---")
-
-    print(
-        f"Durchschnittstemperatur: "
-        f"{metrics['average_temperature_c']:.1f} °C"
-    )
-
-    print(
-        f"Temperaturbereich: "
-        f"{metrics['min_temperature_c']:.1f} bis "
-        f"{metrics['max_temperature_c']:.1f} °C"
-    )
-
-    print(
-        f"Durchschnittliche Luftdichte: "
-        f"{metrics['average_air_density_kg_per_m3']:.3f} kg/m³"
-    )
-
-    print(
-        f"Luftdichtebereich: "
-        f"{metrics['min_air_density_kg_per_m3']:.3f} bis "
-        f"{metrics['max_air_density_kg_per_m3']:.3f} kg/m³"
-    )
-
-    print("\n--- Motor ---")
-
-    print(
-        f"Rollwiderstandskoeffizient: "
-        f"{metrics['rolling_resistance_coefficient']:.4f}"
-    )
-
-    print(
-        f"Durchschnittlicher Rollwiderstand: "
-        f"{metrics['average_rolling_force_n']:.2f} N"
-    )
-
-    print(
-        f"Maximaler Rollwiderstand: "
-        f"{metrics['max_rolling_force_n']:.2f} N"
-    )
-
-    print(
-        f"Maximale Leistung: "
-        f"{metrics['max_power_w']:.0f} W"
-    )
-
-    print(
-        f"Maximaler Motorstrom: "
-        f"{metrics['max_motor_current_a']:.1f} A"
-    )
-
-    print(
-        f"Mechanische Energie: "
-        f"{metrics['mechanical_energy_wh']:.1f} Wh"
-    )
-
-    print("\n--- Akkus ---")
-
-    print(
-        f"LiPo-Ladezustand: "
-        f"{metrics['lipo_soc_percent']:.1f} %"
-    )
-
-    print(
-        f"NMC-Ladezustand: "
-        f"{metrics['nmc_soc_percent']:.1f} %"
-    )
-
-    print(
-        f"Minimale LiPo-Spannung: "
-        f"{metrics['min_lipo_voltage_v']:.2f} V"
-    )
-
-    print(
-        f"Minimale NMC-Spannung: "
-        f"{metrics['min_nmc_voltage_v']:.2f} V"
-    )
-    # Anfangstemperatur des Akkus aus dem erstenTemperaturwert der CSV-Datei.
-    print(
-        f"Akku-Anfangstemperatur: "
-        f"{metrics['initial_battery_temperature_c']:.2f} °C"
-    )
-
-    # Höchste berechnete Akkutemperaturen während der Fahrt.
-    print(
-        f"LiPo-Maximaltemperatur: "
-        f"{metrics['max_lipo_temperature_c']:.2f} °C"
-    )
-
-    print(
-        f"NMC-Maximaltemperatur: "
-        f"{metrics['max_nmc_temperature_c']:.2f} °C"
-    )
-
-    # Akkutemperaturen am Ende der Fahrt.
-    print(
-        f"LiPo-Endtemperatur: "
-        f"{metrics['final_lipo_temperature_c']:.2f} °C"
-    )
-
-    print(
-        f"NMC-Endtemperatur: "
-        f"{metrics['final_nmc_temperature_c']:.2f} °C"
-    )
-
-    print(
-        f"Maximale LiPo-Akkuleistung: "
-        f"{metrics['max_lipo_battery_power_w']:.0f} W"
-    )
-
-    print(
-        f"Maximale NMC-Akkuleistung: "
-        f"{metrics['max_nmc_battery_power_w']:.0f} W"
-    )
-
-    print("\n--- Rekuperation ---")
-
-    print(
-        f"Mechanische Bremsenergie: "
-        f"{metrics['mechanical_braking_energy_wh']:.2f} Wh"
-    )
-
-    print(
-        f"Vom LiPo aufgenommene Energie: "
-        f"{metrics['lipo_recovered_energy_wh']:.2f} Wh"
-    )
-
-    print(
-        f"Vom NMC aufgenommene Energie: "
-        f"{metrics['nmc_recovered_energy_wh']:.2f} Wh"
-    )
-
-    print(
-        f"Im LiPo-Bremswiderstand dissipiert: "
-        f"{metrics['lipo_resistor_energy_wh']:.2f} Wh"
-    )
-
-    print(
-        f"Im NMC-Bremswiderstand dissipiert: "
-        f"{metrics['nmc_resistor_energy_wh']:.2f} Wh"
-    )
-
-    print(
-        f"Mechanische Bremsenergie bei LiPo: "
-        f"{metrics['lipo_friction_brake_energy_wh']:.2f} Wh"
-    )
-
-    print(
-        f"Mechanische Bremsenergie bei NMC: "
-        f"{metrics['nmc_friction_brake_energy_wh']:.2f} Wh"
-    )
-
-    print(
-        f"Maximale LiPo-Widerstandsleistung: "
-        f"{metrics['max_lipo_resistor_power_w']:.2f} W"
-    )
-
-    print(
-        f"Maximale NMC-Widerstandsleistung: "
-        f"{metrics['max_nmc_resistor_power_w']:.2f} W"
-    )
-
-    print(
-        f"Maximale LiPo-Widerstandstemperatur: "
-        f"{metrics['max_lipo_resistor_temperature_c']:.2f} °C"
-    )
-
-    print(
-        f"Maximale NMC-Widerstandstemperatur: "
-        f"{metrics['max_nmc_resistor_temperature_c']:.2f} °C"
-    )
+    return {
+        metric_name: METRIC_LABELS.get(
+            metric_name,
+            metric_name,
+        )
+        for metric_name in get_metric_section_names()
+    }
 
 
-def show_results(
-    results: dict,
-) -> None:
-    """Zeigt alle vorhandenen Diagramme nacheinander an."""
+def select_items(
+    title: str,
+    options: dict[str, str],
+) -> list[str]:
+    """
+    Zeigt ein interaktives Auswahlmenü im Terminal.
+    """
 
-    plot_names = get_plot_names(
-        results
-    )
+    option_ids = list(options.keys())
 
-    logger.info(
-        "Bereite %d Ergebnisdiagramme vor",
-        len(plot_names),
-    )
+    while True:
+        print()
+        print(title)
+        print("-" * len(title))
 
-    for plot_name in plot_names:
-        figure = None
+        # Alle verfügbaren Einträge nummeriert anzeigen.
+        for number, option_id in enumerate(
+            option_ids,
+            start=1,
+        ):
+            print(
+                f"{number}: {options[option_id]}"
+            )
+
+        print("a: Alle auswählen")
+        print("0: Keine auswählen")
+        print("q: Programm abbrechen")
+
+        user_input = input(
+            "Auswahl eingeben "
+            "(zum Beispiel 1,3, a, 0 oder q): "
+        ).strip().lower()
+
+        # Alle Einträge auswählen.
+        if user_input in {"a", "alle"}:
+            return option_ids.copy()
         
-        try:
-            logger.info(
-                "Zeige Diagramm: %s",
-                plot_name,
+        # Das vollständige Programm aus jedem Menü heraus abbrechen.
+        if user_input in {"q", "quit", "abbrechen"}:
+            raise UserCancelledError
+
+        # Keine Einträge auswählen.
+        if user_input in {"0", "keine"}:
+            return []
+
+        # Kommas durch Leerzeichen ersetzen. Dadurch funktionieren sowohl 1,3 als auch 1 3
+        entered_values = (
+            user_input
+            .replace(",", " ")
+            .split()
+        )
+
+        if not entered_values:
+            print(
+                "Keine gültige Auswahl eingegeben. "
+                "Bitte erneut versuchen."
             )
+            continue
 
-            figure = create_result_figure(
-                results=results,
-                plot_name=plot_name,
+        # Prüfen, ob wirklich nur Zahlen eingegeben wurden.
+        if not all(
+            value.isdigit()
+            for value in entered_values
+        ):
+            print(
+                "Ungültige Eingabe. Bitte Zahlen, "
+                "'a' oder '0' verwenden."
             )
-            
+            continue
 
-            plt.show()
+        selected_numbers = [
+            int(value)
+            for value in entered_values
+        ]
 
-        except Exception as error:
-            raise RuntimeError(
-                f"Das Diagramm '{plot_name}' "
-                f"konnte nicht erstellt oder "
-                f"angezeigt werden."
-            ) from error
+        # Prüfen, ob alle Zahlen zu einem vorhandenen Menüpunkt gehören.
+        if any(
+            number < 1
+            or number > len(option_ids)
+            for number in selected_numbers
+        ):
+            print(
+                "Mindestens eine Zahl liegt "
+                "außerhalb des gültigen Bereichs."
+            )
+            continue
 
-        finally:
-            if figure is not None:
-                plt.close(figure)
+        selected_ids = []
+
+        for number in selected_numbers:
+            option_id = option_ids[number - 1]
+
+            # Doppelte Auswahlen vermeiden.
+            if option_id not in selected_ids:
+                selected_ids.append(option_id)
+
+        return selected_ids
 
 
 def main() -> int:
-    """
-    Startet die E-Bike-Simulation.
-    """
+    """Startet die E-Bike-Simulation."""
 
     configure_logging()
 
-    logger.info(
-        "E-Bike-Simulation gestartet"
-    )
-
-    logger.info(
-        "Verwendete GPS-Datei: %s",
-        GPS_FILE,
-    )
-
     try:
+        # Zuerst auswählen, welche Ergebnisse später im Terminal ausgegeben werden sollen.
+        metric_sections = select_items(
+            title=(
+                "Welche Ergebnisse möchtest du "
+                "im Terminal ausgeben?"
+            ),
+            options=get_metric_options(),
+        )
+
+        # Anschließend auswählen, welche Diagrammenach der Simulation angezeigt werden sollen.
+        plot_ids = select_items(
+            title=(
+                "Welche Diagramme möchtest du "
+                "anzeigen?"
+            ),
+            options=get_plot_options(),
+        )
+
+        logger.info(
+            "E-Bike-Simulation gestartet"
+        )
+
+        logger.info(
+            "Verwendete GPS-Datei: %s",
+            GPS_FILE,
+        )
+
         simulator = BikeSimulator(
             gps_file=GPS_FILE,
             battery_capacity_ah=50.0,
@@ -325,18 +218,25 @@ def main() -> int:
             "Simulation erfolgreich abgeschlossen"
         )
 
-        print_metrics(
-            results["metrics"]
-        )
+        # Nur die ausgewählten Ergebnisgruppen im Terminal ausgeben.
+        if metric_sections:
+            print_selected_metrics(
+                metrics=results["metrics"],
+                selected_sections=metric_sections,
+            )
 
-        show_results(results)
+        # Nur die ausgewählten Diagramme anzeigen.
+        if plot_ids:
+            show_result_figures(
+                results=results,
+                selected_plot_ids=plot_ids,
+            )
 
     except FileNotFoundError as error:
         logger.error(
             "Benötigte Datei wurde nicht gefunden: %s",
             error,
         )
-
         return 1
 
     except ValueError as error:
@@ -344,22 +244,21 @@ def main() -> int:
             "Ungültige Simulationsdaten: %s",
             error,
         )
-
         return 1
 
     except KeyboardInterrupt:
-        logger.warning(
-            "Simulation wurde durch den Benutzer abgebrochen"
-        )
+        print()
 
+        logger.warning(
+            "Simulation wurde durch den Benutzer "
+            "abgebrochen"
+        )
         return 130
 
     except Exception:
-        # logger.exception gibt zusätzlich den vollständigen Traceback des unbekannten Fehlers aus.
         logger.exception(
             "Unerwarteter Programmfehler"
         )
-
         return 1
 
     logger.info(
