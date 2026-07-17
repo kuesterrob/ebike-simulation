@@ -10,6 +10,9 @@ from src.reporting.console import (
     get_metric_section_names,
     print_selected_metrics,
 )
+from src.reporting.pdf_report import (
+    create_pdf_report,
+)
 
 
 PROJECT_DIRECTORY = Path(__file__).resolve().parent
@@ -19,6 +22,12 @@ GPS_FILE = (
     / "data"
     / "final_project_input_data.csv"
 )
+
+PDF_REPORT_FILE = (
+    GPS_FILE.parent
+    / "ebike_simulation_report.pdf"
+)
+
 
 
 logger = logging.getLogger(__name__)
@@ -166,6 +175,36 @@ def select_items(
                 selected_ids.append(option_id)
 
         return selected_ids
+    
+def ask_yes_no(
+    question: str,
+) -> bool:
+    """
+    Fragt im Terminal eine Ja-Nein-Entscheidung ab.
+    """
+
+    while True:
+        user_input = input(
+            f"{question} (j/n/q): "
+        ).strip().lower()
+
+        if user_input in {"j", "ja"}:
+            return True
+
+        if user_input in {"n", "nein"}:
+            return False
+
+        if user_input in {
+            "q",
+            "quit",
+            "abbrechen",
+        }:
+            raise UserCancelledError
+
+        print(
+            "Ungültige Eingabe. Bitte j, n oder q "
+            "eingeben."
+        )
 
 
 def main() -> int:
@@ -190,6 +229,11 @@ def main() -> int:
                 "anzeigen?"
             ),
             options=get_plot_options(),
+        )
+
+        create_report = ask_yes_no(
+            "Möchtest du aus dieser Auswahl "
+             "einen PDF-Bericht erstellen?"
         )
 
         logger.info(
@@ -225,12 +269,35 @@ def main() -> int:
                 selected_sections=metric_sections,
             )
 
-        # Nur die ausgewählten Diagramme anzeigen.
+        # PDF vor der Anzeige der Diagrammfenster erstellen.
+     
+        if create_report:
+            created_report = create_pdf_report(
+                results=results,
+                selected_sections=metric_sections,
+                selected_plot_ids=plot_ids,
+                output_file=PDF_REPORT_FILE,
+            )
+
+            print()
+            print(
+                "PDF-Bericht wurde erstellt:"
+            )
+            print(
+                created_report.resolve()
+            )
+
+        # Erst danach die ausgewählten Diagramme anzeigen.
         if plot_ids:
             show_result_figures(
                 results=results,
                 selected_plot_ids=plot_ids,
             )
+    
+    except UserCancelledError:
+        print()
+        print("Programm wurde abgebrochen.")
+        return 0
 
     except FileNotFoundError as error:
         logger.error(
