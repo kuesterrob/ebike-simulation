@@ -341,6 +341,156 @@ class BikeSimulator:
             "battery_currents": battery_currents,
         }
 
+    def _create_simulation_components(
+        self,
+        initial_temperature_c: float,
+    ) -> dict:
+        """
+        Erzeugt die Akkus, den Rekuperationscontroller
+        und die Bremswiderstände für die Simulation.
+        """
+
+        # Die Anzahl paralleler Zellstränge ist nichtbekannt. 
+        # Deshalb wird zunächst ein paralleler Strang angenommen.
+        battery_parallel_cells = 1
+
+        # Thermische Modellannahmen für beide Akkupacks.
+        battery_thermal_capacity_j_per_k = (
+            10_000.0
+        )
+
+        battery_thermal_resistance_k_per_w = (
+            2.0
+        )
+
+        # Der Innenwiderstand verändert sich im Modell um ein Prozent pro Kelvin.
+        battery_resistance_temperature_coefficient = (
+            0.01
+        )
+
+        # Die angegebenen Innenwiderstände gelten bei einer Referenztemperatur von 25 °C.
+        battery_reference_temperature_c = 25.0
+
+        # Der Akku darf mit maximal 0,5 C geladen werden.
+        battery_max_charge_c_rate = 0.5
+
+        battery_max_charge_current_a = (
+            self.battery_capacity_ah
+            * battery_max_charge_c_rate
+        )
+
+        # LiPo-Akkupack erzeugen.
+        lipo = LiPoBatteryPack(
+            capacity_nom_Ah=(
+                self.battery_capacity_ah
+            ),
+            max_charge_current_a=(
+                battery_max_charge_current_a
+            ),
+            internal_resistance_mOhm=80.0,
+            initial_soc=self.initial_soc,
+            Vmin=32.0,
+            Vmax=42.0,
+            parallel_cells=(
+                battery_parallel_cells
+            ),
+            initial_temperature_c=(
+                initial_temperature_c
+            ),
+            thermal_capacity_j_per_k=(
+                battery_thermal_capacity_j_per_k
+            ),
+            thermal_resistance_k_per_w=(
+                battery_thermal_resistance_k_per_w
+            ),
+            resistance_temperature_coefficient_per_k=(
+                battery_resistance_temperature_coefficient
+            ),
+            reference_temperature_c=(
+                battery_reference_temperature_c
+            ),
+        )
+
+        # NMC-Akkupack erzeugen.
+        nmc = NMCBatteryPack(
+            capacity_nom_Ah=(
+                self.battery_capacity_ah
+            ),
+            max_charge_current_a=(
+                battery_max_charge_current_a
+            ),
+            internal_resistance_mOhm=70.0,
+            initial_soc=self.initial_soc,
+            Vmin=32.0,
+            Vmax=42.0,
+            parallel_cells=(
+                battery_parallel_cells
+            ),
+            initial_temperature_c=(
+                initial_temperature_c
+            ),
+            thermal_capacity_j_per_k=(
+                battery_thermal_capacity_j_per_k
+            ),
+            thermal_resistance_k_per_w=(
+                battery_thermal_resistance_k_per_w
+            ),
+            resistance_temperature_coefficient_per_k=(
+                battery_resistance_temperature_coefficient
+            ),
+            reference_temperature_c=(
+                battery_reference_temperature_c
+            ),
+        )
+
+        # Modellannahmen für die Rekuperation:
+        # 75 Prozent der mechanischen Bremsleistung können elektrisch genutzt werden.
+        # Der Generator kann höchstens 500 W elektrische Leistung bereitstellen.
+        regenerative_controller = (
+            RegenerativeBrakingController(
+                efficiency=0.75,
+                max_electrical_power_w=500.0,
+            )
+        )
+
+        # Gemeinsame Parameter der Bremswiderstände.
+        brake_resistor_parameters = {
+            "resistance_ohm": 4.0,
+            "max_power_w": 500.0,
+            "initial_temperature_c": (
+                initial_temperature_c
+            ),
+            "thermal_capacity_j_per_k": (
+                5_000.0
+            ),
+            "thermal_resistance_k_per_w": 1.0,
+        }
+
+        # LiPo und NMC sind zwei unabhängige Simulationsvarianten. 
+        # Deshalb benötigt jede Variante einen eigenen Bremswiderstand mit eigenem Temperaturzustand.
+        lipo_brake_resistor = BrakeResistor(
+            **brake_resistor_parameters
+        )
+
+        nmc_brake_resistor = BrakeResistor(
+            **brake_resistor_parameters
+        )
+
+        # Alle erzeugten Komponenten gemeinsam zurückgeben
+        return {
+            "lipo": lipo,
+            "nmc": nmc,
+            "regenerative_controller": (
+                regenerative_controller
+            ),
+            "lipo_brake_resistor": (
+                lipo_brake_resistor
+            ),
+            "nmc_brake_resistor": (
+                nmc_brake_resistor
+            ),
+        }
+
     def run(self) -> dict:
         """Führt die Simulation aus."""
 
@@ -432,133 +582,41 @@ class BikeSimulator:
         battery_currents = motor_data[
             "battery_currents"
         ]
-   
-        # Akkus
 
-        # Der Akku stand vor der Fahrt lange genug in derselben Umgebung. Seine Anfangstemperatu entspricht deshalb dem ersten Temperaturwert der CSV-Datei.
+        # Akkus und Rekuperationskomponenten
+
+        # Der Akku stand vor der Fahrt lange genug in derselben Umgebung.
+        #  Deshalb entspricht seine Anfangstemperatur dem ersten Temperaturwert der GPS-Datei.
         initial_battery_temperature_c = float(
             temperatures[0]
         )
 
-        # Die Anzahl paralleler Zellstränge ist nicht bekannt.
-        # Deshalb wird zunächst ein paralleler Strang angenommen.
-        battery_parallel_cells = 1
-
-        # Freie thermische Modellannahmen, weil keine
-        # Daten für den Akkupack vorhanden sind.
-        battery_thermal_capacity_j_per_k = 10_000.0
-        battery_thermal_resistance_k_per_w = 2.0
-
-        # Modellannahme:
-        # Der Innenwiderstand verändert sich um 1 % pro Kelvin.
-        battery_resistance_temperature_coefficient = 0.01
-
-        # Die angegebenen Widerstände werden als Werte
-         # bei einer Referenztemperatur von 25 °C interpretiert.
-        battery_reference_temperature_c = 25.0
-
-        #Freie Modellannahme:
-        # Der Akku darf mit maximal 0,5 C (Laderate) geladen werden.
-        # Bei einem Akku mit 50 Ah ergibt das:
-        # I_Laden_max = 50 Ah * 0,5 = 25 A
-        battery_max_charge_c_rate = 0.5
-
-        battery_max_charge_current_a = (
-            self.battery_capacity_ah
-            * battery_max_charge_c_rate
-        )
-
-        lipo = LiPoBatteryPack(
-            capacity_nom_Ah=(
-                self.battery_capacity_ah
-            ),
-            max_charge_current_a=(
-                battery_max_charge_current_a
-            ),
-            internal_resistance_mOhm=80.0,
-            initial_soc=self.initial_soc,
-            Vmin=32.0,
-            Vmax=42.0,
-            parallel_cells=(
-                battery_parallel_cells
-            ),
-            initial_temperature_c=(
-                initial_battery_temperature_c
-            ),
-            thermal_capacity_j_per_k=(
-                battery_thermal_capacity_j_per_k
-            ),
-            thermal_resistance_k_per_w=(
-                battery_thermal_resistance_k_per_w
-            ),
-            resistance_temperature_coefficient_per_k=(
-                battery_resistance_temperature_coefficient
-            ),
-            reference_temperature_c=(
-                battery_reference_temperature_c
-            ),
-        )
-
-        nmc = NMCBatteryPack(
-            capacity_nom_Ah=(
-                self.battery_capacity_ah
-            ),
-            max_charge_current_a=(
-                battery_max_charge_current_a
-            ),
-            internal_resistance_mOhm=70.0,
-            initial_soc=self.initial_soc,
-            Vmin=32.0,
-            Vmax=42.0,
-            parallel_cells=(
-                battery_parallel_cells
-            ),
-            initial_temperature_c=(
-                initial_battery_temperature_c
-            ),
-            thermal_capacity_j_per_k=(
-                battery_thermal_capacity_j_per_k
-            ),
-            thermal_resistance_k_per_w=(
-                battery_thermal_resistance_k_per_w
-            ),
-            resistance_temperature_coefficient_per_k=(
-                battery_resistance_temperature_coefficient
-            ),
-            reference_temperature_c=(
-                battery_reference_temperature_c
-            ),
-        )
-        # FModellannahmen für die Rekuperation:
-        # 75 % der mechanisch aufgenommenen Bremsleistung können elektrisch genutzt werden.
-        # Der Motor kann im Generatorbetrieb höchstens500 W elektrische Leistung liefern.
-        regenerative_controller = (
-            RegenerativeBrakingController(
-                efficiency=0.75,
-                max_electrical_power_w=500.0,
+        # Akkus, Rekuperationscontroller und Bremswiderstände erzeugen.
+        components = (
+            self._create_simulation_components(
+                initial_temperature_c=(
+                    initial_battery_temperature_c
+                )
             )
         )
 
-        #Modellannahmen für den Bremswiderstand.
-        brake_resistor_parameters = {
-            "resistance_ohm": 4.0,
-            "max_power_w": 500.0,
-            "initial_temperature_c": (
-                initial_battery_temperature_c
-            ),
-            "thermal_capacity_j_per_k": 5_000.0,
-            "thermal_resistance_k_per_w": 1.0,
-        }
 
-        # LiPo und NMC sind zwei alternative Simulationen. Deshalb benötigt jede Variante einen eigenen
-        # Widerstand mit eigenem Temperaturzustand.
-        lipo_brake_resistor = BrakeResistor(
-            **brake_resistor_parameters
-        )
+        lipo = components["lipo"]
 
-        nmc_brake_resistor = BrakeResistor(
-            **brake_resistor_parameters
-        )
+        nmc = components["nmc"]
+
+        regenerative_controller = components[
+            "regenerative_controller"
+        ]
+
+        lipo_brake_resistor = components[
+            "lipo_brake_resistor"
+        ]
+
+        nmc_brake_resistor = components[
+            "nmc_brake_resistor"
+        ]
+        
 
         lipo_voltages = []
         nmc_voltages = []
