@@ -131,10 +131,19 @@ class BikeSimulator:
         #Wetterdaten pullen
         weather_api = TripWeather(dataframe)
         weather = weather_api.get_weather()
+        wind_speeds = weather["wind_speed_10m"].to_numpy(
+            dtype=float
+        )
+        wind_directions = weather["wind_direction_10m"].to_numpy(
+            dtype=float
+        )
         
         #Bewegungsrichtungen berechnen
         move_dir = MovementDirection(dataframe)
         dataframe = move_dir.calculate()
+        move_directions = dataframe["bearing"].to_numpy(
+            dtype=float
+        )
         
         # Route
         route_calculator = RouteCalculator()
@@ -237,6 +246,7 @@ class BikeSimulator:
             0.0,
             None,
         )
+        logger.info("Routendatenvorbereitung abgeschlossen")
 
         # Alle später benötigten Routenwerte werden gemeinsam in einem Dictionary zurückgegeben.
         return {
@@ -259,6 +269,9 @@ class BikeSimulator:
             "accelerations": accelerations,
             "slopes": slopes,
             "slope_degrees": slope_degrees,
+            "wind_speeds": wind_speeds,
+            "wind_direction": wind_directions,
+            "movement_direction": move_directions
         }
 
     def _calculate_motor_data(
@@ -277,11 +290,24 @@ class BikeSimulator:
             "accelerations"
         ]
 
-        slopes = route_data["slopes"]
+        slopes = route_data[
+            "slopes"
+        ]
 
         air_densities = route_data[
             "air_densities"
         ]
+        wind_speeds = route_data[
+            "wind_speeds"
+        ]
+        wind_directions = route_data[
+            "wind_direction"
+        ]
+        movement_directions = route_data[
+            "movement_direction"
+        ]
+
+        
 
         # Motormodell erzeugen.
         motor = Motor()
@@ -292,10 +318,18 @@ class BikeSimulator:
             accelerations=accelerations,
             slopes=slopes,
             air_density_kg_per_m3=air_densities,
+            wind_speeds=wind_speeds,
+            wind_directions=wind_directions,
+            move_directions=movement_directions,
+
         )
 
         forces = motor_results[
             "force_n"
+        ]
+
+        wind_forces = motor_results[
+            "wind_force_n"
         ]
 
         rolling_forces = motor_results[
@@ -361,6 +395,7 @@ class BikeSimulator:
         return {
             "motor": motor,
             "forces": forces,
+            "wind_forces": wind_forces,
             "rolling_forces": rolling_forces,
             "powers": powers,
             "signed_powers": signed_powers,
@@ -1290,6 +1325,11 @@ class BikeSimulator:
                     "forces"
                 ],
 
+                # Windkraft
+                "wind_force_n": motor_data[
+                    "wind_forces"
+                ],
+
                 # Rollwiderstandskraft.
                 "rolling_force_n": motor_data[
                     "rolling_forces"
@@ -1541,7 +1581,6 @@ class BikeSimulator:
             metrics["lipo_soc_percent"],
             metrics["nmc_soc_percent"],
         )
-
         # Vollständige Ergebnisstruktur erstellen.
         return self._build_results(
             route_data=route_data,

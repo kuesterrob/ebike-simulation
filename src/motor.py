@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+import pandas as pd
 
 
 logger = logging.getLogger(__name__)
@@ -66,6 +67,9 @@ class Motor:
         accelerations: np.ndarray,
         slopes: np.ndarray,
         air_density_kg_per_m3: np.ndarray,
+        wind_speeds: np.ndarray,
+        wind_directions: np.ndarray,
+        move_directions: np.ndarray,
     ) -> dict[str, np.ndarray]:
         """
         Berechnet die Motorgrößen aus den zuvor vom
@@ -143,15 +147,51 @@ class Motor:
             0.0,
         )
 
-        # Die Luftwiderstandskraft wird für jeden Streckenabschnitt mit der dort berechneten Luftdichte bestimmt.
+        # Die Luftwiderstandskraft wird für jeden Streckenabschnitt mit der dort berechneten Luftdichte und dem Windeinfluss bestimmt.
         # F_Luft = 0,5 * Luftdichte * Widerstandsfläche * Geschwindigkeit²
-        # Bei geringerer Luftdichte fällt auch der Luftwiderstand und damit die benötigte Motorleistung kleiner aus.
+        # Bei geringerer Luftdichte oder Rückenwind fällt auch der Luftwiderstand und damit die benötigte Motorleistung kleiner aus.
+
+        #Richtungs und Geschwindigkeitsdaten vorbereiten
+        wind_speed_factor = 0.45                #Faktor für die Windgeschwindigkeit, da diese in 10m Höhe angegeben wird
+
+
+
+        
+        # Fahrtrichtung als Einheitsvektor 
+        head = np.radians(move_directions[:-1])
+        print(len(head))
+        hx, hy = np.sin(head), np.cos(head)
+
+        # Wind: Richtung, aus der er kommt -> Richtung, in die er weht (meteologisch)
+        wind_directions = np.radians((wind_directions[:-1] + 180) % 360)
+        print(len(wind_directions))
+
+        wx = wind_speeds[:-1] * np.sin(wind_directions)
+        wy = wind_speeds[:-1] * np.cos(wind_directions)
+        
+
+        ax = wx - speeds * hx
+        ay = wy - speeds * hy
+        
+
+        v_apparent = np.hypot(ax, ay)          # Betrag des scheinbaren Windes
+        v_long = -(ax * hx + ay * hy)
+
         air_force = (
             0.5
             * air_density_kg_per_m3
             * self.drag_area_m2
-            * speeds**2
+            * v_apparent
+            * v_long
         )
+        air_force_still = (
+            0.5
+            * air_density_kg_per_m3
+            * self.drag_area_m2
+            * speeds **2
+            
+        )
+        wind_force = air_force - air_force_still
 
         # Die gesamte benötigte Antriebskraft ergibt sich aus der Summe der Beschleunigungs-, Steigungs- und Luftwiderstandskraft.
         total_force = (
@@ -216,6 +256,7 @@ class Motor:
             "slope_force_n": slope_force,
             "rolling_force_n": rolling_force,
             "air_force_n": air_force,
+            "wind_force_n" :wind_force,
             "force_n": total_force,
             "power_w": drive_power,
             # Zusätzliche Werte für die spätere Rekuperation.

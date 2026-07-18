@@ -11,6 +11,7 @@ PLOT_OPTIONS = {
     "slope": "Steigung",
     "air_density": "Luftdichte",
     "distance": "Zurückgelegte Strecke",
+    "wind_force": "Windkraft",
     "drive_force": "Antriebskraft",
     "motor_power": "Motorleistung",
     "torque": "Drehmoment",
@@ -110,6 +111,16 @@ def get_plot_definitions(
             },
             "x_label": "Zeit",
             "y_label": "Strecke [km]",
+        },
+        "Windkraft": {
+            "x": time["intervals"],
+            "series": {
+                "Windkraft": (
+                    motor["wind_force_n"]
+                ),
+            },
+            "x_label": "Zeit",
+            "y_label": "Kraft [N]",
         },
 
         "Antriebskraft": {
