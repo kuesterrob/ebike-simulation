@@ -211,7 +211,7 @@ def main() -> int:
     """Startet die E-Bike-Simulation."""
 
     configure_logging()
-
+    
     try:
         # Zuerst auswählen, welche Ergebnisse später im Terminal ausgegeben werden sollen.
         metric_sections = select_items(

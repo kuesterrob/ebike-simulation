@@ -1,6 +1,10 @@
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+from matplotlib.lines import Line2D
 import logging
+from itertools import groupby
+import numpy as np
+
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +35,29 @@ PLOT_OPTIONS = {
         "Mechanische Bremsleistung"
     ),
 }
+#20 Farben für Geocoding plots für Leserlichkeit
+STRONG_COLORS = [
+    "#0067c2",  # blau
+    "#3a521f",  # grün
+    "#a33181",  # magenta
+    "#856100",  # oliv
+    "#60408f",  # violett
+    "#008561",  # petrol
+    "#7a3754",  # weinrot
+    "#b83700",  # orange
+    "#12524b",  # petrol
+    "#c21d5f",  # weinrot
+    "#1c4b7a",  # blau
+    "#99001f",  # rot
+    "#7a1dc2",  # violett
+    "#667a12",  # grün
+    "#b800ab",  # magenta
+    "#2e8099",  # petrol
+    "#b85c45",  # rot
+    "#1c40b8",  # blau
+    "#1b8500",  # laubgrün
+    "#66412e",  # orange
+]
 
 def get_plot_definitions(
     results: dict,
@@ -380,10 +407,127 @@ def create_figure(
 
     return figure
 
+def _cut(data, start, stop=None):
+    """Positionsbasierter Zugriff, auch für pandas-Objekte mit eigenem Index."""
+    data = getattr(data, "iloc", data)
+    return data[start] if stop is None else data[start:stop]
+
+
+def _segments(places):
+    """Zusammenhängende Blöcke gleichen Ortsnamens als (name, i0, i1)."""
+    i = 0
+    for name, group in groupby(places):
+        n = len(list(group))
+        yield name, i, i + n
+        i += n
+
+
+def create_figure_route(
+    x,
+    series: dict,
+    title: str,
+    x_label: str,
+    y_label: str,
+    places=np.array,
+    label_min: int = 8,
+    rotation: int = 60,
+):
+    """
+    Erstellt eine Matplotlib-Figur.
+
+    places: optionale Ortsnamen (gleiche Länge wie x). Färbt die Kurve je
+            Ort ein und beschriftet Segmente ab label_min Punkten schräg.
+    """
+
+    figure, axis = plt.subplots(
+        figsize=(10, 5),
+    )
+
+    if places is not None and len(places) != len(x):
+        raise ValueError(
+            f"'places' hat die Länge {len(places)}, "
+            f"erwartet wurde {len(x)}."
+        )
+
+    colors = (
+        {
+            name: STRONG_COLORS[i % len(STRONG_COLORS)]
+            for i, name in enumerate(dict.fromkeys(places))
+        }
+        if places is not None
+        else {}
+    )
+
+    for series_name, values in series.items():
+        if len(x) != len(values):
+            raise ValueError(
+                f"Die Datenreihe '{series_name}' "
+                f"hat die Länge {len(values)}, "
+                f"erwartet wurde {len(x)}."
+            )
+
+        if places is not None:
+            axis.legend(
+                handles=[Line2D([], [], color=c, lw=3, label=n)
+                     for n, c in colors.items()],
+                loc="upper left",
+                fontsize=7,
+                ncol=2,
+                frameon=False,
+        )
+        elif len(series) > 1:
+            axis.legend()
+
+        gesetzt = 0
+        for name, i0, i1 in _segments(places):
+            end = min(i1 + 1, len(x))  # Überlappung, sonst Lücken
+            axis.plot(
+                _cut(x, i0, end),
+                _cut(values, i0, end),
+                linestyle="-",
+                color=colors[name],
+            )
+
+            if i1 - i0 >= label_min:
+                mid = (i0 + i1 - 1) // 2 
+                oben = gesetzt % 2 == 0      # abwechselnd über/unter der Kurve
+                gesetzt += 1
+                axis.annotate(
+                    name,
+                    (_cut(x, mid), _cut(values, mid)),
+                    textcoords="offset points",
+                    xytext=(4, 4),
+                    rotation=rotation,
+                    rotation_mode="anchor",
+                    ha="left" if oben else "right",
+                    va="bottom" if oben else "top",
+                    fontsize=8,
+                    fontweight="bold",
+                    color=colors[name],
+                )
+
+    axis.set_title(title)
+    axis.set_xlabel(x_label)
+    axis.set_ylabel(y_label)
+    axis.grid(True)
+    axis.xaxis.set_major_locator(mdates.MinuteLocator(byminute=[0, 30]))
+    axis.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
+    axis.xaxis.set_minor_locator(mdates.MinuteLocator(byminute=[10, 20, 40, 50]))
+    
+
+    if len(series) > 1 and places is None:
+        axis.legend()
+
+    figure.autofmt_xdate()
+    figure.tight_layout()
+
+    return figure
+    
 
 def create_result_figure(
     results: dict,
     plot_name: str,
+    places: np.ndarray
 ):
     """
     Erzeugt eine bestimmte Ergebnisfigur anhand
@@ -406,13 +550,23 @@ def create_result_figure(
 
     plot_data = plot_definitions[plot_name]
 
-    return create_figure(
+    if plot_name == "Zurückgelegte Strecke":    #Extra Plot für gesamtstreck um Geocoding Daten zu inkludieren
+        return create_figure_route( 
         x=plot_data["x"],
         series=plot_data["series"],
         title=plot_name,
         x_label=plot_data["x_label"],
         y_label=plot_data["y_label"],
+        places = places,
     )
+    else:
+        return create_figure(
+            x=plot_data["x"],
+            series=plot_data["series"],
+            title=plot_name,
+            x_label=plot_data["x_label"],
+            y_label=plot_data["y_label"],
+        )
 
 def get_plot_options() -> dict[str, str]:
     """
@@ -439,6 +593,7 @@ def show_result_figures(
         "Bereite %d Ergebnisdiagramme vor",
         len(selected_plot_ids),
     )
+    places = results["places"]
 
     for plot_id in selected_plot_ids:
         if plot_id not in PLOT_OPTIONS:
@@ -474,6 +629,7 @@ def show_result_figures(
             figure = create_result_figure(
                 results=results,
                 plot_name=plot_name,
+                places = places
             )
 
             plt.show()

@@ -17,6 +17,7 @@ from src.gps_plot_route_on_map import GPSMap
 from src.reverse_geocoding import Reverse_Geocoder
 from src.get_weather_data import TripWeather
 from src.get_driving_direction import MovementDirection
+from src.data_cleaner import Cleaner
 
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,7 @@ class BikeSimulator:
         self.battery_capacity_ah = battery_capacity_ah
         self.initial_soc = initial_soc
         self.filter_window = filter_window
+        self.places = None
 
         self._validate_parameters()
 
@@ -65,6 +67,9 @@ class BikeSimulator:
         Liest die GPS-Datei ein und berechnet alle
         benötigten Routen- und Umgebungsdaten.
         """
+
+        # Cleaner initialisieren
+        cleaner = Cleaner()
 
         # GPS-Datei einlesen.
         reader = GPSReader()
@@ -127,6 +132,10 @@ class BikeSimulator:
         #Reverse Geocoding Daten fetchen
         geo = Reverse_Geocoder(dataframe)
         locations = geo.get_results()
+        places = locations["place"].to_numpy(
+            dtype=str
+        )
+        self.places = Cleaner.clean_places(places)
 
         #Wetterdaten pullen
         weather_api = TripWeather(dataframe)
@@ -1224,6 +1233,7 @@ class BikeSimulator:
         lipo_data: dict,
         nmc_data: dict,
         metrics: dict,
+        places: np.array,
     ) -> dict:
         """
         Erstellt die vollständige Ergebnisstruktur
@@ -1232,6 +1242,7 @@ class BikeSimulator:
 
         return {
             "metrics": metrics,
+            "places": places,
 
             "time": {
                 # Zeitpunkte aller GPS-Messungen.
@@ -1588,4 +1599,5 @@ class BikeSimulator:
             lipo_data=lipo_data,
             nmc_data=nmc_data,
             metrics=metrics,
+            places = self.places 
         )
