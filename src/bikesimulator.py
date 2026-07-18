@@ -32,11 +32,23 @@ class BikeSimulator:
         battery_capacity_ah: float = 50.0,
         initial_soc: float = 1.0,
         filter_window: int = 5,
+        rider_mass_kg: float = 70.0,
+        bike_mass_kg: float = 10.0,
+        drag_area_m2: float = 0.5625,
+        wheel_diameter_inch: float = 27.0,
+        motor_constant_nm_per_a: float = 1.5,
+        rolling_resistance_coefficient: float = 0.0077,
     ) -> None:
         self.gps_file = Path(gps_file)
         self.battery_capacity_ah = battery_capacity_ah
         self.initial_soc = initial_soc
         self.filter_window = filter_window
+        self.rider_mass_kg = rider_mass_kg
+        self.bike_mass_kg = bike_mass_kg
+        self.drag_area_m2 = drag_area_m2
+        self.wheel_diameter_inch = wheel_diameter_inch
+        self.motor_constant_nm_per_a = motor_constant_nm_per_a
+        self.rolling_resistance_coefficient = rolling_resistance_coefficient
         self.places = None
 
         self._validate_parameters()
@@ -319,7 +331,14 @@ class BikeSimulator:
         
 
         # Motormodell erzeugen.
-        motor = Motor()
+        motor = Motor(
+            rider_mass_kg=self.rider_mass_kg,
+            bike_mass_kg=self.bike_mass_kg,
+            drag_area_m2=self.drag_area_m2,
+            wheel_diameter_inch=self.wheel_diameter_inch,
+            motor_constant_nm_per_a=self.motor_constant_nm_per_a,
+            rolling_resistance_coefficient=self.rolling_resistance_coefficient,
+            )
 
         # Kräfte, Leistungen, Drehmomente und Ströme für alle Streckenabschnitte berechnen.
         motor_results = motor.calculate(

@@ -11,16 +11,22 @@ class Motor:
 
     def __init__(
         self,
-        total_mass_kg: float = 80.0,
+        rider_mass_kg: float = 70.0,
+        bike_mass_kg: float = 10.0,
         drag_area_m2: float = 0.5625,
         wheel_diameter_inch: float = 27.0,
         motor_constant_nm_per_a: float = 1.5,
-         rolling_resistance_coefficient: float = 0.0077, # Quelle: Tengattini & Bigazzi (2018), DOI: 10.1080/02640414.2018.1458587
+        rolling_resistance_coefficient: float = 0.0077, # Quelle: Tengattini & Bigazzi (2018), DOI: 10.1080/02640414.2018.1458587
     ) -> None:
         
-        if total_mass_kg <= 0:
+        if rider_mass_kg <= 0:
             raise ValueError(
-                "Die Gesamtmasse muss größer als 0 sein."
+                "Die Fahrermasse muss größer als 0 sein."
+            )
+        
+        if bike_mass_kg <= 0:
+            raise ValueError(
+                "Die Bikemasse muss größer als 0 sein."
             )
 
         if drag_area_m2 < 0:
@@ -39,13 +45,14 @@ class Motor:
                 "Die Motorkonstante muss größer als 0 sein."
             )
         
+        
         if rolling_resistance_coefficient < 0:
             raise ValueError(
                 "Der Rollwiderstandskoeffizient darf nicht "
                 "negativ sein."
             )
 
-    
+        total_mass_kg = rider_mass_kg + bike_mass_kg
         self.total_mass_kg = total_mass_kg
         self.drag_area_m2 = drag_area_m2
         self.motor_constant_nm_per_a = motor_constant_nm_per_a
@@ -159,12 +166,12 @@ class Motor:
         
         # Fahrtrichtung als Einheitsvektor 
         head = np.radians(move_directions[:-1])
-        print(len(head))
+        
         hx, hy = np.sin(head), np.cos(head)
 
         # Wind: Richtung, aus der er kommt -> Richtung, in die er weht (meteologisch)
         wind_directions = np.radians((wind_directions[:-1] + 180) % 360)
-        print(len(wind_directions))
+        
 
         wx = wind_speeds[:-1] * np.sin(wind_directions)
         wy = wind_speeds[:-1] * np.cos(wind_directions)
