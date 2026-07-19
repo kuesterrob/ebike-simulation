@@ -69,6 +69,7 @@ def create_plot_image(
     """
 
     plot_options = get_plot_options()
+    places = results["places"]
 
     if plot_id not in plot_options:
         raise ValueError(
@@ -80,6 +81,7 @@ def create_plot_image(
     figure = create_result_figure(
         results=results,
         plot_name=plot_name,
+        places = places
     )
 
     image_buffer = BytesIO()

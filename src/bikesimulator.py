@@ -631,6 +631,7 @@ class BikeSimulator:
         resistor_temperatures = []
         friction_brake_powers = []
         conversion_loss_powers = []
+        soc_list = []
 
         # Jeden Streckenabschnitt nacheinander simulieren.
         for (
@@ -762,6 +763,11 @@ class BikeSimulator:
                 ]
             )
 
+            #Socs appenden
+            soc_list.append(
+                battery.soc * 100
+            )
+
         # Listen nach Abschluss der Simulationin NumPy-Arrays umwandeln.
         voltages = np.asarray(
             voltages,
@@ -806,6 +812,11 @@ class BikeSimulator:
         conversion_loss_powers = np.asarray(
             conversion_loss_powers,
             dtype=float,
+        )
+
+        soc_list = np.asarray(
+            soc_list,
+            dtype = float,
         )
 
         # Positive Akkuleistung: -> Der Akku gibt Energie ab.
@@ -864,7 +875,9 @@ class BikeSimulator:
             "conversion_loss_powers": (
                 conversion_loss_powers
             ),
-            
+            "soc_list": (
+                soc_list
+            ),
         }
 
     def _calculate_metrics(
@@ -1424,6 +1437,15 @@ class BikeSimulator:
 
                 "nmc_soc_percent": nmc_data[
                     "soc_percent"
+                ],
+
+                #Soc Verläufe
+                "lipo_soc_list": lipo_data[
+                    "soc_list"
+                ],
+
+                "nmc_soc_list": nmc_data[
+                    "soc_list"
                 ],
 
                 # Temperaturverläufe.

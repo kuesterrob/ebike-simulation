@@ -1,6 +1,6 @@
 import logging
 import numpy as np
-import pandas as pd
+
 
 
 logger = logging.getLogger(__name__)
@@ -218,6 +218,7 @@ class Motor:
         )
 
         # Antriebsfall nur positive Leistungswerte verwendet.
+        
         drive_power = np.clip(
             signed_power,
             0.0,

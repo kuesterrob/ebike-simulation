@@ -21,6 +21,7 @@ PLOT_OPTIONS = {
     "torque": "Drehmoment",
     "motor_current": "Motorstrom",
     "battery_current": "Akkustrom",
+    "battery_soc": "Batterie SoC",
     "battery_voltage": "Batteriespannung",
     "battery_temperature": "Akkutemperatur",
     "battery_power": "Akkuleistung",
@@ -206,6 +207,20 @@ def get_plot_definitions(
             },
             "x_label": "Zeit",
             "y_label": "Strom [A]",
+        },
+
+        "Batterie SoC": {
+            "x": time["intervals"],
+            "series": {
+                "LiPo": (
+                    battery["lipo_soc_list"]
+                ),
+                "NMC": (
+                    battery["nmc_soc_list"]
+                ),
+            },
+            "x_label": "Zeit",
+            "y_label": "SoC [%]",
         },
 
         "Batteriespannung": {
