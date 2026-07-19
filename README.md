@@ -55,6 +55,19 @@ python main.py
 
 Nach dem Start erscheint das Terminal-Menü der E-Bike-Simulation.
 
+### 2.4 API-Funktion testen
+
+Wetter- und Ortsdaten werden zwischengespeichert, damit sie nicht bei jedem Programmstart erneut von den APIs abgerufen werden müssen. Die Cache-Dateien befinden sich im Ordner `data`:
+
+```text
+data/weather_cache.json
+data/geocode_cache.json
+```
+
+Um zu überprüfen, ob die API-Abfragen funktionieren, können diese beiden Cache-Dateien vor dem Programmstart gelöscht werden. Beim nächsten Start ruft das Programm die benötigten Daten erneut ab und erstellt die Cache-Dateien automatisch neu.
+
+Für diesen Test werden eine Internetverbindung sowie ein gültiger API-Zugang benötigt. Außerdem müssen mögliche Anfragelimits der verwendeten APIs beachtet werden.
+
 ## 3. Bedienung des Programms
 
 ### 3.1 Aufbau des Terminal-Menüs
@@ -71,19 +84,6 @@ Auswahl (1–2):
 ```
 
 Die gewünschte Funktion wird durch Eingabe der entsprechenden Zahl und anschließendes Drücken der Eingabetaste ausgewählt.
-
-### 2.4 API-Funktion testen
-
-Wetter- und Ortsdaten werden zwischengespeichert, damit sie nicht bei jedem Programmstart erneut von den APIs abgerufen werden müssen. Die Cache-Dateien befinden sich im Ordner `data`:
-
-```text
-data/weather_cache.json
-data/geocode_cache.json
-```
-
-Um zu überprüfen, ob die API-Abfragen funktionieren, können diese beiden Cache-Dateien vor dem Programmstart gelöscht werden. Beim nächsten Start ruft das Programm die benötigten Daten erneut ab und erstellt die Cache-Dateien automatisch neu.
-
-Für diesen Test werden eine Internetverbindung sowie ein gültiger API-Zugang benötigt. Außerdem müssen mögliche Anfragelimits der verwendeten APIs beachtet werden.
 
 ### 3.2 Erklärung der Hauptmenüpunkte
 
@@ -235,7 +235,6 @@ Die Anwendung erzeugt folgende Ausgaben:
 ## 4. Softwarearchitektur
 
 ### 4.1 UML-Klassendiagramm
-
 Das folgende UML-Klassendiagramm zeigt die wichtigsten Klassen der Anwendung sowie deren Vererbungs- und Nutzungsbeziehungen. Zur besseren Übersicht werden nur zentrale Attribute und Methoden dargestellt.
 
 ```mermaid
@@ -244,23 +243,23 @@ classDiagram
 
     namespace Simulation {
         class BikeSimulator {
-            -gps_file
-            -battery_capacity_ah
-            -initial_soc
-            -rider_mass_kg
-            -bike_mass_kg
-            -drag_area_m2
-            -wheel_diameter_inch
-            -motor_constant_nm_per_a
-            -rolling_resistance_coefficient
-            -_validate_parameters()
-            -_prepare_route_data()
-            -_calculate_motor_data()
-            -_create_simulation_components()
-            -_simulate_battery_variant()
-            -_calculate_metrics()
-            -_build_results()
-            +run()
+            -gps_file : Path
+            -battery_capacity_ah : float
+            -initial_soc : float
+            -rider_mass_kg : float
+            -bike_mass_kg : float
+            -drag_area_m2 : float
+            -wheel_diameter_inch : float
+            -motor_constant_nm_per_a : float
+            -rolling_resistance_coefficient : float
+            -_validate_parameters() None
+            -_prepare_route_data() dict
+            -_calculate_motor_data(route_data: dict) dict
+            -_create_simulation_components(initial_temperature_c: float) dict
+            -_simulate_battery_variant(battery_name: str, battery: BatteryPack, brake_resistor: BrakeResistor, regenerative_controller: RegenerativeBrakingController, motor_data: dict, route_data: dict) dict
+            -_calculate_metrics(route_data: dict, motor_data: dict, lipo_data: dict, nmc_data: dict) dict
+            -_build_results(route_data: dict, motor_data: dict, lipo_data: dict, nmc_data: dict, metrics: dict, places: np.array) dict
+            +run() dict
         }
     }
 
@@ -268,117 +267,117 @@ classDiagram
         class GPSReader {
             -df
             -distances
-            -total_3d
-            -climb
-            -descent
-            +load_file(file_path)
-            +calculate_distances()
-            +get_stats()
-            +haversine(lat1, lon1, lat2, lon2)
+            -total_3d : float
+            -climb : float
+            -descent : float
+            +load_file(file_path: Path) pd.DataFrame
+            +calculate_distances() np.array
+            +get_stats() dict
+            +haversine(lat1: float, lon1: float, lat2: float, lon2: float)
         }
 
         class RouteCalculator {
-            +calculate_speed(timedeltas, distances)
-            +calculate_acceleration(timedeltas, speeds)
-            +calculate_slope(distances, elevations)
+            +calculate_speed(timedeltas: np.ndarray, distances: np.ndarray) np.ndarray
+            +calculate_acceleration(timedeltas: np.ndarray, speeds: np.ndarray, half_window: int) np.ndarray
+            +calculate_slope(distances: np.ndarray, elevations: np.ndarray) np.ndarray
         }
 
         class MovementDirection {
-            -df
-            -lat
-            -lon
-            -_bearing(lat1, lon1, lat2, lon2)
-            +calculate()
+            -df : pd.DataFrame
+            -lat : str
+            -lon : str
+            -_bearing(lat1: float, lon1: float, lat2: float, lon2: float)
+            +calculate() pd.DataFrame
         }
 
         class GPSMap {
             -points
-            -line_color
-            -tiles
-            +add_points(lat, lon)
-            +clear()
-            -_construct_map()
-            +save()
+            -line_color : str
+            -tiles : str
+            +add_points(lat: str, lon: str) None
+            +clear() None
+            -_construct_map(with_line: bool) folium.map
+            +save() None
         }
 
         class Cleaner {
-            +clean_places(places, values, min_size)
+            +clean_places(places: list, values, min_size: int, aliases: dict) list
         }
     }
 
     namespace Datenanreicherung {
         class TripWeather {
-            -df
-            -_key(latitude, longitude, time)
-            -_fetch(cells)
-            +get_weather()
+            -df : pd.df
+            -_key(la: float, lo: float, t: float) str
+            -_fetch(cells: list)
+            +get_weather() pd.DataFrame
         }
 
         class Reverse_Geocoder {
-            -df
+            -df : pd.df
             -api_key
-            +geoapify_bulk(coordinates)
-            +get_results()
+            +geoapify_bulk(coords: pd.df) json
+            +get_results() pd.df
         }
     }
 
     namespace Antriebssystem {
         class Motor {
-            -total_mass_kg
-            -drag_area_m2
-            -wheel_radius_m
-            -motor_constant_nm_per_a
-            -rolling_resistance_coefficient
-            +calculate(speeds, accelerations, slopes, air_density)
+            -total_mass_kg : float
+            -drag_area_m2 : float
+            -wheel_radius_m : float
+            -motor_constant_nm_per_a : float
+            -rolling_resistance_coefficient : float
+            +calculate(speeds: np.ndarray, accelerations: np.ndarray, slopes: np.ndarray, air_density_kg_per_m3: np.ndarray, wind_speeds: np.ndarray, wind_directions: np.ndarray, move_directions: np.ndarray) dict[str, np.ndarray]
         }
     }
 
     namespace Akkusystem {
         class BatteryBase {
             <<abstract>>
-            +apply_current(current, duration)
-            +voltage(current)
+            +apply_current(current: float, duration: float) None
+            +voltage(current: float) float
         }
 
         class BatteryPack {
-            -capacity_nom_ah
-            -soc
-            -temperature_c
-            -internal_resistance
-            -Vmin
-            -Vmax
-            +effective_internal_resistance()
-            +update_temperature()
-            +maximum_charge_current(duration)
-            +apply_current(current, duration)
-            +voltage(current)
-            +is_empty()
-            +is_full()
+            -C_nom : float
+            -soc : float
+            -temperature_c : float
+            -R_int_reference : float
+            -Vmin : float
+            -Vmax : float
+            +effective_internal_resistance() float
+            +update_temperature(current: float, duration: float, ambient_temperature_c: float) None
+            +maximum_charge_current(duration: float) float
+            +apply_current(current: float, duration: float) None
+            +voltage(current: float) float
+            +is_empty() bool
+            +is_full() bool
         }
 
         class LiPoBatteryPack {
-            +voltage(current)
+            +voltage(current: float) float
         }
 
         class NMCBatteryPack {
-            +voltage(current)
+            +voltage(current: float) float
         }
 
         class RegenerativeBrakingController {
-            -efficiency
-            -max_electrical_power_w
-            +calculate_charge_current(battery, requested_power)
-            +distribute(braking_power, duration, battery, brake_resistor)
+            -efficiency : float
+            -max_electrical_power_w : float
+            +calculate_charge_current(battery: BatteryPack, requested_power_w: float) float
+            +distribute(braking_power_w: float, duration: float, battery: BatteryPack, brake_resistor: BrakeResistor) dict[str, float]
         }
 
         class BrakeResistor {
-            -resistance_ohm
-            -max_power_w
-            -temperature_c
-            -dissipated_energy_j
-            +maximum_power(dc_voltage)
-            +update_temperature(power, duration, ambient_temperature)
-            +dissipated_energy_wh()
+            -resistance_ohm : float
+            -max_power_w : float
+            -temperature_c : float
+            -dissipated_energy_j : float
+            +maximum_power(dc_voltage_v: float) float
+            +update_temperature(power_w: float, duration: float, ambient_temperature_c: float) None
+            +dissipated_energy_wh : float
         }
     }
 
@@ -683,17 +682,53 @@ flowchart TD
 
 Die beiden Akkuvarianten werden fachlich unabhängig voneinander simuliert. Im Programm werden sie nicht parallel ausgeführt. Zuerst wird die vollständige Strecke mit dem LiPo-Akku und anschließend mit dem NMC-Akku simuliert. Beide Varianten verwenden dieselben Routen- und Motorwerte, besitzen aber jeweils einen eigenen Akkuzustand und einen eigenen Bremswiderstand.
 
-### 5.2 Erklärung des Programmablaufs
 
-Der Programmablauf beginnt in der Funktion `main()`. Der Benutzer entscheidet, ob eine Parameterstudie oder eine einzelne Simulation mit konkreten Werten durchgeführt werden soll.
+### 5.2 Beschreibung Ablauf einer vollständigen Simulation
 
-Bei der Parameterstudie werden 20 vordefinierte Parametersätze nacheinander verarbeitet. Jeder Parametersatz verändert bestimmte Werte der Basiskonfiguration, beispielsweise das Fahrergewicht, das Fahrradgewicht, die Stirnfläche oder den Rollwiderstandsbeiwert. Für jeden Fall wird ein neues `BikeSimulator`-Objekt erzeugt und eine vollständige Simulation ausgeführt. Nach Abschluss aller Fälle werden die Ergebnisse mit der Basiskonfiguration verglichen und im Terminal ausgegeben.
+Eine vollständige Simulation läuft in folgenden Schritten ab:
 
-Bei einer Simulation mit konkreten Werten kann der Benutzer entweder die Standardwerte übernehmen oder eigene Parameter eingeben. Danach wird festgelegt, welche Kennzahlengruppen im Terminal ausgegeben, welche Diagramme angezeigt und ob ein PDF-Bericht erstellt werden sollen.
+1. **Simulationsparameter prüfen:**  
+   Beim Erzeugen des `BikeSimulator` werden Akkukapazität, Ladezustand, Filtergröße und weitere Simulationsparameter überprüft.
 
-Unabhängig vom ausgewählten Modus wird die eigentliche Berechnung durch die Methode `BikeSimulator.run()` durchgeführt. Die Methode koordiniert die Datenaufbereitung, die Motorberechnung, die Akkusimulation und die Zusammenfassung der Ergebnisse.
+2. **GPS-Datei einlesen:**  
+   Der `GPSReader` liest die CSV-Datei ein und kontrolliert die benötigten Spalten und Werte.
 
-### 5.3 Verarbeitung der Eingaben
+3. **Streckendaten berechnen:**  
+   Aus den GPS-Koordinaten und Höhenwerten werden die räumlichen Distanzen sowie der Auf- und Abstieg berechnet. Aus den Zeitstempeln entstehen die Zeitdifferenzen der einzelnen Streckenabschnitte.
+
+4. **Streckeninformationen ergänzen:**  
+   Das Programm erstellt eine HTML-Karte, ruft Orts- und Wetterinformationen ab und berechnet die Fahrtrichtung.
+
+5. **Fahrwerte bestimmen:**  
+   Der `RouteCalculator` berechnet Geschwindigkeit, Beschleunigung und Steigung. Zusätzlich wird für jeden Streckenabschnitt die Luftdichte bestimmt.
+
+6. **Motorwerte berechnen:**  
+   Der `Motor` berechnet die Beschleunigungs-, Steigungs-, Roll- und Luftwiderstandskräfte. Daraus werden die Motorleistung, das Drehmoment, der Motorstrom und die erforderliche Bremsleistung bestimmt.
+
+7. **Simulationskomponenten erzeugen:**  
+   Es werden ein LiPo-Akku, ein NMC-Akku, zwei Bremswiderstände und ein Rekuperationscontroller erzeugt.
+
+8. **LiPo-Akku simulieren:**  
+   Die vollständige Strecke wird Abschnitt für Abschnitt mit dem LiPo-Akku simuliert.
+
+9. **NMC-Akku simulieren:**  
+   Anschließend wird dieselbe Strecke mit denselben Motorwerten für den NMC-Akku simuliert.
+
+10. **Streckenabschnitte verarbeiten:**  
+    Für jeden Abschnitt wird entschieden, ob Antriebs- oder Bremsleistung benötigt wird. Im Antriebsfall wird der Akku entladen. Im Bremsfall wird die verfügbare Energie auf Akku, Bremswiderstand und mechanische Bremse verteilt.
+
+11. **Zustände aktualisieren:**  
+    Nach jedem Abschnitt werden Ladezustand, Spannung, Innenwiderstand und Temperatur des Akkus sowie die Temperatur des Bremswiderstands aktualisiert.
+
+12. **Ergebnisse zusammenfassen:**  
+    Nach beiden Akkusimulationen werden Kennzahlen wie Gesamtstrecke, Energieverbrauch, Endladezustand, Temperaturen und zurückgewonnene Bremsenergie berechnet.
+
+13. **Ergebnisse ausgeben:**  
+    `main.py` gibt die ausgewählten Kennzahlen im Terminal aus. Optional werden ein PDF-Bericht und die ausgewählten Diagramme erstellt.
+
+Falls der Benutzer das Programm mit `q` abbricht, wird eine `UserCancelledError` ausgelöst und das Programm kontrolliert beendet. Datei-, Eingabe- und unerwartete Programmfehler werden abgefangen und über das Logging ausgegeben.
+
+### 5.3 Erklärung zur Verarbeitung der Eingaben
 
 Die Anwendung verarbeitet drei Arten von Eingaben:
 
@@ -749,50 +784,6 @@ Wetter- und Ortsinformationen werden aus Cache-Dateien geladen. Sind die benöti
 
 Die Wetterdaten werden über Open-Meteo und die Ortsinformationen über Geoapify abgerufen. Anschließend werden die Ergebnisse in den Cache-Dateien gespeichert, damit sie bei späteren Simulationen nicht erneut heruntergeladen werden müssen.
 
-### 5.4 Ablauf einer vollständigen Simulation
-
-Eine vollständige Simulation läuft in folgenden Schritten ab:
-
-1. **Simulationsparameter prüfen:**  
-   Beim Erzeugen des `BikeSimulator` werden Akkukapazität, Ladezustand, Filtergröße und weitere Simulationsparameter überprüft.
-
-2. **GPS-Datei einlesen:**  
-   Der `GPSReader` liest die CSV-Datei ein und kontrolliert die benötigten Spalten und Werte.
-
-3. **Streckendaten berechnen:**  
-   Aus den GPS-Koordinaten und Höhenwerten werden die räumlichen Distanzen sowie der Auf- und Abstieg berechnet. Aus den Zeitstempeln entstehen die Zeitdifferenzen der einzelnen Streckenabschnitte.
-
-4. **Streckeninformationen ergänzen:**  
-   Das Programm erstellt eine HTML-Karte, ruft Orts- und Wetterinformationen ab und berechnet die Fahrtrichtung.
-
-5. **Fahrwerte bestimmen:**  
-   Der `RouteCalculator` berechnet Geschwindigkeit, Beschleunigung und Steigung. Zusätzlich wird für jeden Streckenabschnitt die Luftdichte bestimmt.
-
-6. **Motorwerte berechnen:**  
-   Der `Motor` berechnet die Beschleunigungs-, Steigungs-, Roll- und Luftwiderstandskräfte. Daraus werden die Motorleistung, das Drehmoment, der Motorstrom und die erforderliche Bremsleistung bestimmt.
-
-7. **Simulationskomponenten erzeugen:**  
-   Es werden ein LiPo-Akku, ein NMC-Akku, zwei Bremswiderstände und ein Rekuperationscontroller erzeugt.
-
-8. **LiPo-Akku simulieren:**  
-   Die vollständige Strecke wird Abschnitt für Abschnitt mit dem LiPo-Akku simuliert.
-
-9. **NMC-Akku simulieren:**  
-   Anschließend wird dieselbe Strecke mit denselben Motorwerten für den NMC-Akku simuliert.
-
-10. **Streckenabschnitte verarbeiten:**  
-    Für jeden Abschnitt wird entschieden, ob Antriebs- oder Bremsleistung benötigt wird. Im Antriebsfall wird der Akku entladen. Im Bremsfall wird die verfügbare Energie auf Akku, Bremswiderstand und mechanische Bremse verteilt.
-
-11. **Zustände aktualisieren:**  
-    Nach jedem Abschnitt werden Ladezustand, Spannung, Innenwiderstand und Temperatur des Akkus sowie die Temperatur des Bremswiderstands aktualisiert.
-
-12. **Ergebnisse zusammenfassen:**  
-    Nach beiden Akkusimulationen werden Kennzahlen wie Gesamtstrecke, Energieverbrauch, Endladezustand, Temperaturen und zurückgewonnene Bremsenergie berechnet.
-
-13. **Ergebnisse ausgeben:**  
-    `main.py` gibt die ausgewählten Kennzahlen im Terminal aus. Optional werden ein PDF-Bericht und die ausgewählten Diagramme erstellt.
-
-Falls der Benutzer das Programm mit `q` abbricht, wird eine `UserCancelledError` ausgelöst und das Programm kontrolliert beendet. Datei-, Eingabe- und unerwartete Programmfehler werden abgefangen und über das Logging ausgegeben.
 
 ## 6. Fehlerbehandlung und Tests
 
@@ -830,12 +821,12 @@ Die Tests überprüfen unter anderem:
 Die Tests können im Projektordner mit folgendem Befehl ausgeführt werden:
 
 ```bash
-python -m unittest discover -s tests
+python -m unittest -v    
 ```
 
-Durch die automatisierten Tests können Änderungen am Programm überprüft werden, ohne jede Berechnung manuell kontrollieren zu müssen.
 
-## 8. Verwendung von KI
+
+## 7. Verwendung von KI
 
 Bei der Entwicklung dieses Projekts wurden die KI-Werkzeuge Claude, OpenAI Codex und GitHub Copilot unterstützend eingesetzt.
 
@@ -848,3 +839,5 @@ Die KI-Werkzeuge wurden für folgende Aufgaben verwendet:
 - Verbesserung und Strukturierung der Projektdokumentation,
 
 Die grundlegenden Anforderungen, die fachlichen Entscheidungen und der Aufbau der Simulation wurden selbst festgelegt. Die vorgeschlagenen Lösungen wurden nicht ungeprüft übernommen, sondern in den bestehenden Programmcode integriert, getestet und bei Bedarf angepasst.
+
+## 8. Fazit
