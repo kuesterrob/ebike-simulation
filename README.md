@@ -533,7 +533,7 @@ Einige Bestandteile der Anwendung sind als Funktionen und nicht als Klassen umge
 
 ### 5.1 Aktivitätsdiagramme
 
-Die folgenden Aktivitätsdiagramme stellen den Programmablauf als Mermaid-Flowcharts dar. Das erste Diagramm zeigt die Steuerung durch `main.py`. Das zweite Diagramm beschreibt den internen Ablauf der Methode `BikeSimulator.run()`.
+Die folgenden Aktivitätsdiagramme stellen den Programmablauf dar. Das erste Diagramm zeigt die Steuerung durch `main.py`. Das zweite Diagramm beschreibt den internen Ablauf der Methode `BikeSimulator.run()`.
 
 #### 5.1.1 Gesamtablauf des Programms
 
@@ -685,7 +685,7 @@ Die beiden Akkuvarianten werden fachlich unabhängig voneinander simuliert. Im P
 
 ### 5.2 Erklärung des Programmablaufs
 
-Der Programmablauf beginnt in der Funktion `main()`. Zunächst wird das Logging eingerichtet. Anschließend entscheidet der Benutzer, ob eine Parameterstudie oder eine einzelne Simulation mit konkreten Werten durchgeführt werden soll.
+Der Programmablauf beginnt in der Funktion `main()`. Der Benutzer entscheidet, ob eine Parameterstudie oder eine einzelne Simulation mit konkreten Werten durchgeführt werden soll.
 
 Bei der Parameterstudie werden 20 vordefinierte Parametersätze nacheinander verarbeitet. Jeder Parametersatz verändert bestimmte Werte der Basiskonfiguration, beispielsweise das Fahrergewicht, das Fahrradgewicht, die Stirnfläche oder den Rollwiderstandsbeiwert. Für jeden Fall wird ein neues `BikeSimulator`-Objekt erzeugt und eine vollständige Simulation ausgeführt. Nach Abschluss aller Fälle werden die Ergebnisse mit der Basiskonfiguration verglichen und im Terminal ausgegeben.
 
@@ -793,3 +793,58 @@ Eine vollständige Simulation läuft in folgenden Schritten ab:
     `main.py` gibt die ausgewählten Kennzahlen im Terminal aus. Optional werden ein PDF-Bericht und die ausgewählten Diagramme erstellt.
 
 Falls der Benutzer das Programm mit `q` abbricht, wird eine `UserCancelledError` ausgelöst und das Programm kontrolliert beendet. Datei-, Eingabe- und unerwartete Programmfehler werden abgefangen und über das Logging ausgegeben.
+
+## 6. Fehlerbehandlung und Tests
+
+### 6.1 Fehlerbehandlung
+
+Die Anwendung überprüft sowohl die Benutzereingaben als auch die eingelesenen und berechneten Simulationsdaten. Ungültige Werte werden frühzeitig erkannt und führen zu einer verständlichen Fehlermeldung.
+
+Behandelt werden unter anderem:
+
+- fehlende oder fehlerhafte GPS-Dateien,
+- ungültige Zahlen und Simulationsparameter,
+- fehlende Spalten oder Werte in der CSV-Datei,
+- unzulässige Akku-, Motor- und Temperaturwerte,
+- Fehler beim Zugriff auf externe APIs,
+- ein Abbruch durch den Benutzer mit `q` oder `Strg + C`,
+- unerwartete Programmfehler.
+
+Status-, Warn- und Fehlermeldungen werden mit dem Python-Modul `logging` im Terminal ausgegeben. Dadurch lässt sich nachvollziehen, welcher Programmschritt gerade ausgeführt wird und an welcher Stelle ein Fehler aufgetreten ist.
+
+### 6.2 Automatisierte Tests
+
+Für zentrale Bestandteile der Simulation wurden automatisierte Unit-Tests mit dem Python-Modul `unittest` erstellt.
+
+Die Tests überprüfen unter anderem:
+
+- die Berechnung von Geschwindigkeit, Beschleunigung und Steigung,
+- die Berechnung der Luftdichte,
+- die Antriebs- und Bremsleistung des Motors,
+- das Laden und Entladen des Akkus,
+- die Begrenzung des maximalen Ladestroms,
+- die Verteilung der Rekuperationsleistung,
+- die Leistungsbilanz zwischen Akku, Bremswiderstand und mechanischer Bremse,
+- die Behandlung ungültiger Eingabewerte.
+
+Die Tests können im Projektordner mit folgendem Befehl ausgeführt werden:
+
+```bash
+python -m unittest discover -s tests
+```
+
+Durch die automatisierten Tests können Änderungen am Programm überprüft werden, ohne jede Berechnung manuell kontrollieren zu müssen.
+
+## 8. Verwendung von KI
+
+Bei der Entwicklung dieses Projekts wurden die KI-Werkzeuge Claude, OpenAI Codex und GitHub Copilot unterstützend eingesetzt.
+
+Die KI-Werkzeuge wurden für folgende Aufgaben verwendet:
+
+- Unterstützung bei der Fehlersuche,
+- Strukturierung des Programmcodes und der Module,
+- Entwicklung und Überarbeitung der Rekuperationslogik,
+- Unterstützung bei der Implementierung des Terminal-Menüs,
+- Verbesserung und Strukturierung der Projektdokumentation,
+
+Die grundlegenden Anforderungen, die fachlichen Entscheidungen und der Aufbau der Simulation wurden selbst festgelegt. Die vorgeschlagenen Lösungen wurden nicht ungeprüft übernommen, sondern in den bestehenden Programmcode integriert, getestet und bei Bedarf angepasst.
