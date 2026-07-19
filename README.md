@@ -265,8 +265,8 @@ classDiagram
 
     namespace Streckenverarbeitung {
         class GPSReader {
-            -df
-            -distances
+            -df : pd.df
+            -distances : npndarray 
             -total_3d : float
             -climb : float
             -descent : float
@@ -291,7 +291,7 @@ classDiagram
         }
 
         class GPSMap {
-            -points
+            -points : list
             -line_color : str
             -tiles : str
             +add_points(lat: str, lon: str) None
@@ -315,7 +315,7 @@ classDiagram
 
         class Reverse_Geocoder {
             -df : pd.df
-            -api_key
+            -api_key : str
             +geoapify_bulk(coords: pd.df) json
             +get_results() pd.df
         }
@@ -840,4 +840,6 @@ Die KI-Werkzeuge wurden für folgende Aufgaben verwendet:
 
 Die grundlegenden Anforderungen, die fachlichen Entscheidungen und der Aufbau der Simulation wurden selbst festgelegt. Die vorgeschlagenen Lösungen wurden nicht ungeprüft übernommen, sondern in den bestehenden Programmcode integriert, getestet und bei Bedarf angepasst.
 
-## 8. Fazit
+## 8. Mögliche Verbesserungen
+- Filter von GPS Rohdaten gegen GPS Rauschen anstelle der Filterung von berechneten Werten,
+- genauere Physikalische Modelle,
