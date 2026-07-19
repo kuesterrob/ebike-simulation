@@ -46,7 +46,7 @@ CASES = {
     "basis":              ("Referenz",   {}),
     "pendler":            ("Archetyp",   dict(rider_mass_kg=80, bike_mass_kg=22, drag_area_m2=0.60, wheel_diameter_inch=28, motor_constant_nm_per_a=1.5, rolling_resistance_coefficient=0.0070)),
     "lastenrad":          ("Archetyp",   dict(rider_mass_kg=80, bike_mass_kg=45, drag_area_m2=0.75, wheel_diameter_inch=20, motor_constant_nm_per_a=2.2, rolling_resistance_coefficient=0.0090)),
-    "sportlich":          ("Archetyp",   dict(rider_mass_kg=70, bike_mass_kg=14, drag_area_m2=0.38, wheel_diameter_inch=28, motor_constant_nm_per_a=1.2, rolling_resistance_coefficient=0.0040)),
+    "sportlich":          ("Archetyp",   dict(rider_mass_kg=70, bike_mass_kg=10, drag_area_m2=0.38, wheel_diameter_inch=28, motor_constant_nm_per_a=1.2, rolling_resistance_coefficient=0.0040)),
     "mtb_gelände":       ("Archetyp",   dict(rider_mass_kg=85, bike_mass_kg=24, drag_area_m2=0.65, wheel_diameter_inch=27.5, motor_constant_nm_per_a=1.8, rolling_resistance_coefficient=0.0140)),
     "masse_leicht":       ("Masse",      dict(rider_mass_kg=55)),
     "masse_schwer":       ("Masse",      dict(rider_mass_kg=100)),
@@ -60,8 +60,8 @@ CASES = {
     "antrieb_schnell":    ("Antrieb",    dict(motor_constant_nm_per_a=1.0, wheel_diameter_inch=29)),
     "antrieb_ausgewogen": ("Antrieb",    dict(motor_constant_nm_per_a=1.5, wheel_diameter_inch=26)),
     "antrieb_drehmoment": ("Antrieb",    dict(motor_constant_nm_per_a=2.5, wheel_diameter_inch=20)),
-    "best_case":          ("Grenzfall",  dict(rider_mass_kg=55, bike_mass_kg=12, drag_area_m2=0.35, wheel_diameter_inch=28, motor_constant_nm_per_a=1.2, rolling_resistance_coefficient=0.0030)),
-    "worst_case":         ("Grenzfall",  dict(rider_mass_kg=110, bike_mass_kg=30, drag_area_m2=0.85, wheel_diameter_inch=26, motor_constant_nm_per_a=1.5, rolling_resistance_coefficient=0.0150)),
+    "best_case":          ("Grenzfall",  dict(rider_mass_kg=55, bike_mass_kg=10, drag_area_m2=0.35, wheel_diameter_inch=28, motor_constant_nm_per_a=2.5, rolling_resistance_coefficient=0.0030)),
+    "worst_case":         ("Grenzfall",  dict(rider_mass_kg=110, bike_mass_kg=30, drag_area_m2=0.85, wheel_diameter_inch=26, motor_constant_nm_per_a=1.0, rolling_resistance_coefficient=0.0150)),
     "auslegungsgrenze":   ("Grenzfall",  dict(rider_mass_kg=110, bike_mass_kg=45, drag_area_m2=0.75, wheel_diameter_inch=20, motor_constant_nm_per_a=2.5, rolling_resistance_coefficient=0.0140)),
 }
 
