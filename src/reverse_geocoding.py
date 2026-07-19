@@ -16,7 +16,7 @@ class Reverse_Geocoder():
         self.df = df
         self.api_key = api_key
 
-    def geoapify_bulk(self,coords) -> json:
+    def geoapify_bulk(self,coords:pd.df) -> json:
         try:
             """POST coords to Geoapify batch, poll until done, return one dict per coord."""
             resp = requests.post(

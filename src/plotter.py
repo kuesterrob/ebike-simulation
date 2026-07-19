@@ -422,13 +422,13 @@ def create_figure(
 
     return figure
 
-def _cut(data, start, stop=None):
+def _cut(data, start:int, stop:int=None):
     """Positionsbasierter Zugriff, auch für pandas-Objekte mit eigenem Index."""
     data = getattr(data, "iloc", data)
     return data[start] if stop is None else data[start:stop]
 
 
-def _segments(places):
+def _segments(places: np.ndarray[str]):
     """Zusammenhängende Blöcke gleichen Ortsnamens als (name, i0, i1)."""
     i = 0
     for name, group in groupby(places):
@@ -443,7 +443,7 @@ def create_figure_route(
     title: str,
     x_label: str,
     y_label: str,
-    places=np.array,
+    places: np.ndarray[str],
     label_min: int = 8,
     rotation: int = 60,
 ):
@@ -453,7 +453,6 @@ def create_figure_route(
     places: optionale Ortsnamen (gleiche Länge wie x). Färbt die Kurve je
             Ort ein und beschriftet Segmente ab label_min Punkten schräg.
     """
-
     figure, axis = plt.subplots(
         figsize=(10, 5),
     )

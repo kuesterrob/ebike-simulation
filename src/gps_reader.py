@@ -12,10 +12,10 @@ class GPSReader:
 
     def __init__(self):
         self.df = pd.DataFrame()
-        self.total_3d = 0.0
-        self.total_h = 0.0
-        self.climb = 0.0
-        self.descent = 0.0
+        self.total_3d:float = 0.0
+        self.total_h:float = 0.0
+        self.climb:float = 0.0
+        self.descent: float = 0.0
         self.distances = np.array([])
 
     def load_file(self, file_path: Path) -> pd.DataFrame:
@@ -220,7 +220,7 @@ class GPSReader:
             ),
         }
     
-    def haversine(self,lat1, lon1, lat2, lon2):
+    def haversine(self,lat1:float, lon1:float, lat2:float, lon2:float):
         "Horizontale Distanz in Metern (Haversine-Formel)."
         R = 6371000
         phi1, phi2 = radians(lat1), radians(lat2)

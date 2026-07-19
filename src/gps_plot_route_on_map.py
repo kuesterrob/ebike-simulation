@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 class GPSMap:
 
-    def __init__(self, lats: list[str], lons: list[str], line_color="blue",tiles="CartoDB positron"):
+    def __init__(self, lats: list[str], lons: list[str], line_color: str="blue",tiles: str ="CartoDB positron"):
         self.points = []
         self.line_color = line_color
         self.tiles = tiles
@@ -30,7 +30,7 @@ class GPSMap:
 
     # -- Karte bauen --------------------------------------------------------
 
-    def _construct_map(self, with_line=True) -> folium.map:
+    def _construct_map(self, with_line:bool=True) -> folium.map:
         if not self.points:
             raise ValueError("Es wurden keine Koordinaten hinzugefuegt.")
 

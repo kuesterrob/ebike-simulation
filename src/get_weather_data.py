@@ -15,7 +15,7 @@ class TripWeather:
     VARS = ["temperature_2m", "surface_pressure", "wind_speed_10m",
             "wind_direction_10m", "wind_gusts_10m", "precipitation"]  # xm ist Messhöhe über Boden
  
-    def __init__(self, df, lat="lat", lon="lon", time="time"):
+    def __init__(self, df:pd.df, lat="lat", lon="lon", time="time"):
         d = df.rename(columns={lat: "lat", lon: "lon"}).copy()
         d["time"] = (pd.to_datetime(d[time], utc=True)      # ...Z -> UTC
                        .dt.tz_convert("Europe/Vienna")      # -> Lokalzeit
@@ -23,11 +23,11 @@ class TripWeather:
         self.df = d             
  
     @staticmethod
-    def _key(la, lo, t):
+    def _key(la:float, lo:float, t:float)-> str:
         return f"{la},{lo},{t.isoformat()}"
  
     # ---- EIN Request fuer alle fehlenden Zellen, 15-min-Werte ----
-    def _fetch(self, cells):
+    def _fetch(self, cells:list):
         try:
             lats = [c[0] for c in cells]
             lons = [c[1] for c in cells]

@@ -10,7 +10,7 @@ ALIASES = {
 
 class Cleaner():
 
-    def clean_places(places, values=None, min_size=15, aliases=ALIASES):
+    def clean_places(places:list, values=None, min_size:int=15, aliases:dict=ALIASES) -> list:
         """Entfernt kurze Ortssprünge; min_size in Einheiten von values bzw. Punkten."""
         p = [aliases.get(v, v) for v in places]
         size = lambda r: values[r[2] - 1] - values[r[1]] if values is not None else r[2] - r[1]

@@ -7,7 +7,7 @@ class MovementDirection:
         self.df = df.reset_index(drop=True)
         self.lat, self.lon = lat, lon
  
-    def _bearing(self, lat1, lon1, lat2, lon2):
+    def _bearing(self, lat1:float, lon1:float, lat2:float, lon2:float):
         "Kurswinkel in Grad (0-360)."
         phi1, phi2 = radians(lat1), radians(lat2)
         dlam = radians(lon2 - lon1)
