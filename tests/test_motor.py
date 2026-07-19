@@ -21,7 +21,8 @@ class TestMotor(unittest.TestCase):
         und überprüft werden.
         """
         self.motor = Motor(
-            total_mass_kg=100.0,
+            rider_mass_kg=80.0,
+            bike_mass_kg=20.0,
             drag_area_m2=0.0,
             wheel_diameter_inch=20.0,
             motor_constant_nm_per_a=2.0,
@@ -38,6 +39,9 @@ class TestMotor(unittest.TestCase):
         accelerations = np.array([1.0])
         slopes = np.array([0.0])
         air_densities = np.array([1.2])
+        wind_speeds = np.array([0.0, 0.0])
+        wind_directions = np.array([0.0, 0.0])
+        move_directions = np.array([0.0, 0.0])
 
     
         results = self.motor.calculate(
@@ -45,6 +49,9 @@ class TestMotor(unittest.TestCase):
             accelerations=accelerations,
             slopes=slopes,
             air_density_kg_per_m3=air_densities,
+            wind_speeds=wind_speeds,
+            wind_directions=wind_directions,
+            move_directions=move_directions,
         )
 
     
@@ -97,12 +104,19 @@ class TestMotor(unittest.TestCase):
         accelerations = np.array([-1.0])
         slopes = np.array([0.0])
         air_densities = np.array([1.2])
+        wind_speeds = np.array([0.0, 0.0])
+        wind_directions = np.array([0.0, 0.0])
+        move_directions = np.array([0.0, 0.0])
+        
 
         results = self.motor.calculate(
             speeds=speeds,
             accelerations=accelerations,
             slopes=slopes,
             air_density_kg_per_m3=air_densities,
+            wind_speeds=wind_speeds,
+            wind_directions=wind_directions,
+            move_directions=move_directions,
         )
 
     
@@ -198,6 +212,10 @@ class TestMotor(unittest.TestCase):
             
             with self.subTest(case=description):
 
+                wind_speeds = np.zeros((len(speeds))+1)
+                wind_directions = np.zeros((len(speeds))+1)
+                move_directions = np.zeros((len(speeds))+1)
+
                 with self.assertRaisesRegex(
                     ValueError,
                     expected_message,
@@ -207,4 +225,8 @@ class TestMotor(unittest.TestCase):
                         accelerations=accelerations,
                         slopes=slopes,
                         air_density_kg_per_m3=air_densities,
+                        wind_speeds=wind_speeds,
+                        wind_directions=wind_directions,
+                        move_directions=move_directions,
                     )
+                
