@@ -28,30 +28,35 @@ class TripWeather:
  
     # ---- EIN Request fuer alle fehlenden Zellen, 15-min-Werte ----
     def _fetch(self, cells):
-        lats = [c[0] for c in cells]
-        lons = [c[1] for c in cells]
-        times = pd.DatetimeIndex([c[2] for c in cells])
-        past = times.max() < pd.Timestamp.now()
-        url = ("https://historical-forecast-api.open-meteo.com/v1/forecast" if past
-               else "https://api.open-meteo.com/v1/forecast")
-        r = requests.get(url, timeout=60, params={
-            "latitude":  ",".join(map(str, lats)),
-            "longitude": ",".join(map(str, lons)),
-            "minutely_15": ",".join(self.VARS),
-            "wind_speed_unit": "ms", "timezone": "Europe/Vienna",
-            "start_date": times.min().date().isoformat(),
-            "end_date":   times.max().date().isoformat(),
-        })
-        r.raise_for_status()
-        data = r.json()
-        data = data if isinstance(data, list) else [data]   # 1 Ort -> Liste
-        out = []
-        for i, loc in enumerate(data):
-            m = pd.DataFrame(loc["minutely_15"])
-            m["time"] = pd.to_datetime(m["time"])
-            idx = (m["time"] - times[i]).abs().argmin()
-            out.append({v: float(m[v].iloc[idx]) for v in self.VARS})
-        return out
+        try:
+            lats = [c[0] for c in cells]
+            lons = [c[1] for c in cells]
+            times = pd.DatetimeIndex([c[2] for c in cells])
+            past = times.max() < pd.Timestamp.now()
+            url = ("https://historical-forecast-api.open-meteo.com/v1/forecast" if past
+                else "https://api.open-meteo.com/v1/forecast")
+            r = requests.get(url, timeout=60, params={
+                "latitude":  ",".join(map(str, lats)),
+                "longitude": ",".join(map(str, lons)),
+                "minutely_15": ",".join(self.VARS),
+                "wind_speed_unit": "ms", "timezone": "Europe/Vienna",
+                "start_date": times.min().date().isoformat(),
+                "end_date":   times.max().date().isoformat(),
+            })
+            r.raise_for_status()
+            data = r.json()
+            data = data if isinstance(data, list) else [data]   # 1 Ort -> Liste
+            out = []
+            for i, loc in enumerate(data):
+                m = pd.DataFrame(loc["minutely_15"])
+                m["time"] = pd.to_datetime(m["time"])
+                idx = (m["time"] - times[i]).abs().argmin()
+                out.append({v: float(m[v].iloc[idx]) for v in self.VARS})
+            return out
+        except requests.RequestException as e:
+            logger.error(f"Fehler bei der Open-Meteo API-Anfrage: {e}")
+            # Programm abbrechen, da ohne Wetterdaten keine weiteren Schritte möglich sind
+            raise SystemExit(1) from e
  
     # ---- Cache laden, nur Fehlendes fetchen, pro Trackpunkt rekonstruieren ----
     def get_weather(self) -> pd.DataFrame:

@@ -11,25 +11,31 @@ PRECISION = 3  # Dezimalstellen für grid bestimmung: 3 = ~110 m
 class Reverse_Geocoder():
 
     #Vor dem ausführen api key festlegen im terminal mit export GEOAPIFY_API_KEY="key"
+    #Wir nutzen die Geoapify API im klar Text weil wir einen kostenlosen Account nutzen. Für die Nutzung in einem Produktivsystem sollte der Key verschlüsselt werden.
     def __init__(self,df: pd.df, api_key = "58a1b553653b4401b914c1ed967d6642"):
         self.df = df
         self.api_key = api_key
 
     def geoapify_bulk(self,coords) -> json:
-        """POST coords to Geoapify batch, poll until done, return one dict per coord."""
-        resp = requests.post(
-            "https://api.geoapify.com/v1/batch/geocode/reverse",
-            params={"apiKey": self.api_key},
-            json=[{"lat": lat, "lon": lon} for lat, lon in coords],
-            timeout=30,
-        )
-        resp.raise_for_status()
-        job_url = resp.json()["url"]
-        while (r := requests.get(job_url, timeout=30)).status_code == 202:
-            time.sleep(5)  # 202 = daten werden noch verarbeitet
-            logger.info("Warten auf reverse geocoding api")
-        r.raise_for_status()
-        return r.json()
+        try:
+            """POST coords to Geoapify batch, poll until done, return one dict per coord."""
+            resp = requests.post(
+                "https://api.geoapify.com/v1/batch/geocode/reverse", 
+                params={"apiKey": self.api_key},
+                json=[{"lat": lat, "lon": lon} for lat, lon in coords],
+                timeout=30,
+            )
+            resp.raise_for_status()
+            job_url = resp.json()["url"]
+            while (r := requests.get(job_url, timeout=30)).status_code == 202:
+                time.sleep(5)  # 202 = daten werden noch verarbeitet
+                logger.info("Warten auf reverse geocoding api")
+            r.raise_for_status()
+            return r.json()
+        except requests.RequestException as e:
+            logger.error(f"Fehler bei der Geoapify API-Anfrage: {e}")
+            #Programm abbrechen, da ohne Geocoding keine weiteren Schritte möglich sind
+            raise SystemExit(1) from e
  
     def get_results(self) -> pd.df:
         #Chache laden
