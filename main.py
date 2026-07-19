@@ -27,8 +27,8 @@ GPS_FILE = (
 )
 
 PDF_REPORT_FILE = (
-    GPS_FILE.parent
-    / "ebike_simulation_report.pdf"
+    GPS_FILE.parent.parent
+    / "outputs/ebike_simulation_report.pdf"
 )
 
 PARAMETERS = (
