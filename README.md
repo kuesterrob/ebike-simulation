@@ -404,9 +404,6 @@ classDiagram
     GPSMap ..> GPSReader : berechnet Start-Ziel-Distanz
 ```
 
-Die durchgezogenen Pfeile mit einer leeren Pfeilspitze zeigen Vererbungen. Die Pfeilspitze zeigt dabei immer auf die übergeordnete Klasse. Die gestrichelten Pfeile stellen Abhängigkeiten dar, bei denen eine Klasse eine andere Klasse verwendet oder erzeugt.
-Hinweis: Bei der Darstellung durch Mermaid kommt es zu einem Darstellungsfehler. Der Pfeil von LiPoBatteryPack muss direkt auf BatteryPack zeigen, wird jedoch nicht korrekt dargestellt.
-
 ### 4.2 Erklärung der Architektur
 
 Die Anwendung besitzt eine modulare und überwiegend objektorientierte Architektur. Die einzelnen Aufgaben des Programms sind auf mehrere Klassen und Module verteilt. Dadurch können die Bestandteile unabhängig voneinander entwickelt, getestet und erweitert werden.
@@ -497,7 +494,7 @@ Die Berechnung wird für den LiPo- und den NMC-Akku getrennt durchgeführt. Beid
 
 ### 4.5 Aufgaben der Klassen und wichtige Methoden
 
-In der folgenden Übersicht werden nur die wichtigsten Methoden beschrieben. Methoden, deren Name mit einem Unterstrich beginnt, sind interne Hilfsmethoden und werden normalerweise nicht direkt von außerhalb der Klasse aufgerufen.
+In der folgenden Übersicht werden nun die wichtigsten Methoden beschrieben. 
 
 | Klasse | Aufgabe | Wichtige Methoden |
 |---|---|---|
@@ -531,3 +528,268 @@ Einige Bestandteile der Anwendung sind als Funktionen und nicht als Klassen umge
 | `format_selected_metrics()` | Bereitet die ausgewählten Kennzahlen für Terminal und PDF auf. |
 | `print_selected_metrics()` | Gibt die ausgewählten Kennzahlen im Terminal aus. |
 | `create_pdf_report()` | Erstellt den vollständigen PDF-Bericht. |
+
+## 5. Programmablauf
+
+### 5.1 Aktivitätsdiagramme
+
+Die folgenden Aktivitätsdiagramme stellen den Programmablauf als Mermaid-Flowcharts dar. Das erste Diagramm zeigt die Steuerung durch `main.py`. Das zweite Diagramm beschreibt den internen Ablauf der Methode `BikeSimulator.run()`.
+
+#### 5.1.1 Gesamtablauf des Programms
+
+```mermaid
+flowchart TD
+    START((Start)) --> A1["Logging konfigurieren"]
+    A1 --> A2["Betriebsart abfragen"]
+    A2 --> D1{"Eingabe gültig?"}
+
+    D1 -- Nein --> F1["ValueError auslösen"]
+    F1 --> ENDE((Ende))
+
+    D1 -- Ja --> D2{"Gewählter Modus"}
+
+    D2 -- "1: Parameterstudie" --> P1
+    D2 -- "2: Konkrete Werte" --> E1
+
+    subgraph PARAMETERSTUDIE["Parameterstudie"]
+        direction TB
+
+        P1["20 vordefinierte Parametersätze laden"]
+        P2{"Weiterer Parametersatz vorhanden?"}
+        P3["Standardwerte mit Änderungen des Falls kombinieren"]
+        P4["BikeSimulator initialisieren"]
+        P5["Simulation mit BikeSimulator.run() ausführen"]
+        P6["LiPo- und NMC-Ergebnisse sammeln"]
+        P7["Abweichungen zum Basisfall berechnen"]
+        P8["Vergleichstabelle im Terminal ausgeben"]
+
+        P1 --> P2
+        P2 -- Ja --> P3
+        P3 --> P4
+        P4 --> P5
+        P5 --> P6
+        P6 --> P2
+        P2 -- Nein --> P7
+        P7 --> P8
+    end
+
+    subgraph EINZELSIMULATION["Simulation mit konkreten Werten"]
+        direction TB
+
+        E1["Standardwerte übernehmen oder Parameter eingeben"]
+        E2["Kennzahlengruppen für Terminalausgabe auswählen"]
+        E3["Diagramme auswählen"]
+        E4["PDF-Erstellung abfragen"]
+        E5["BikeSimulator initialisieren"]
+        E6["Simulation mit BikeSimulator.run() ausführen"]
+        E7{"Kennzahlen ausgewählt?"}
+        E8["Ausgewählte Kennzahlen im Terminal ausgeben"]
+        E9{"PDF-Bericht gewünscht?"}
+        E10["PDF-Bericht erstellen und Speicherpfad ausgeben"]
+        E11{"Diagramme ausgewählt?"}
+        E12["Ausgewählte Diagramme anzeigen"]
+
+        E1 --> E2
+        E2 --> E3
+        E3 --> E4
+        E4 --> E5
+        E5 --> E6
+        E6 --> E7
+
+        E7 -- Ja --> E8
+        E8 --> E9
+        E7 -- Nein --> E9
+
+        E9 -- Ja --> E10
+        E10 --> E11
+        E9 -- Nein --> E11
+
+        E11 -- Ja --> E12
+    end
+
+    P8 --> A3["Erfolgreichen Abschluss protokollieren"]
+    E12 --> A3
+    E11 -- Nein --> A3
+    A3 --> ENDE
+```
+
+#### 5.1.2 Ablauf der Simulation
+
+```mermaid
+flowchart TD
+    START((Start)) --> R1
+
+    subgraph ROUTENDATEN["Routen- und Umgebungsdaten vorbereiten"]
+        direction TB
+
+        R1["GPS-Datei einlesen und prüfen"]
+        R2["3D-Distanzen zwischen GPS-Punkten berechnen"]
+        R3["Zeitstempel vereinheitlichen und Zeitdifferenzen bilden"]
+        R4["Route als HTML-Karte speichern"]
+        R5["Ortsdaten über Reverse Geocoding laden und bereinigen"]
+        R6["Wetterdaten aus Cache oder API laden"]
+        R7["Fahrtrichtung berechnen"]
+        R8["Geschwindigkeit, Beschleunigung, Steigung und Luftdichte berechnen"]
+
+        R1 --> R2
+        R2 --> R3
+        R3 --> R4
+        R4 --> R5
+        R5 --> R6
+        R6 --> R7
+        R7 --> R8
+    end
+
+    R8 --> M1["Motorwerte für alle Streckenabschnitte berechnen"]
+    M1 --> M2["Anfangstemperatur der Akkus bestimmen"]
+    M2 --> M3["LiPo- und NMC-Akku, Bremswiderstände und Rekuperationscontroller erzeugen"]
+    M3 --> V1["Akkuvarianten in der Reihenfolge LiPo und NMC vorbereiten"]
+    V1 --> V2{"Weitere Akkuvariante vorhanden?"}
+
+    subgraph AKKUSIMULATION["Simulation einer Akkuvariante"]
+        direction TB
+
+        S1["Ergebnislisten für die Akkuvariante anlegen"]
+        S2{"Weiterer Streckenabschnitt vorhanden?"}
+        S3["Bremsleistungsverteilung berechnen"]
+        S4{"Bremsleistung größer als 0?"}
+        S5["Negativen Ladestrom aus Rekuperation verwenden"]
+        S6["Positiven Antriebsstrom des Motors verwenden"]
+        S7["Ladezustand des Akkus aktualisieren"]
+        S8["Akku- und Bremswiderstandstemperatur aktualisieren"]
+        S9["Spannung, Strom, Temperatur, Leistung und Ladezustand speichern"]
+        S10["Ergebnisse der Akkuvariante zusammenstellen"]
+
+        S1 --> S2
+        S2 -- Ja --> S3
+        S3 --> S4
+        S4 -- Ja --> S5
+        S4 -- Nein --> S6
+        S5 --> S7
+        S6 --> S7
+        S7 --> S8
+        S8 --> S9
+        S9 --> S2
+        S2 -- Nein --> S10
+    end
+
+    V2 -- Ja --> S1
+    S10 --> V2
+
+    V2 -- Nein --> Z1["Zusammengefasste Kennzahlen berechnen"]
+    Z1 --> Z2["Vollständige Ergebnisstruktur erstellen"]
+    Z2 --> ENDE((Ende))
+```
+
+Die beiden Akkuvarianten werden fachlich unabhängig voneinander simuliert. Im Programm werden sie nicht parallel ausgeführt. Zuerst wird die vollständige Strecke mit dem LiPo-Akku und anschließend mit dem NMC-Akku simuliert. Beide Varianten verwenden dieselben Routen- und Motorwerte, besitzen aber jeweils einen eigenen Akkuzustand und einen eigenen Bremswiderstand.
+
+### 5.2 Erklärung des Programmablaufs
+
+Der Programmablauf beginnt in der Funktion `main()`. Zunächst wird das Logging eingerichtet. Anschließend entscheidet der Benutzer, ob eine Parameterstudie oder eine einzelne Simulation mit konkreten Werten durchgeführt werden soll.
+
+Bei der Parameterstudie werden 20 vordefinierte Parametersätze nacheinander verarbeitet. Jeder Parametersatz verändert bestimmte Werte der Basiskonfiguration, beispielsweise das Fahrergewicht, das Fahrradgewicht, die Stirnfläche oder den Rollwiderstandsbeiwert. Für jeden Fall wird ein neues `BikeSimulator`-Objekt erzeugt und eine vollständige Simulation ausgeführt. Nach Abschluss aller Fälle werden die Ergebnisse mit der Basiskonfiguration verglichen und im Terminal ausgegeben.
+
+Bei einer Simulation mit konkreten Werten kann der Benutzer entweder die Standardwerte übernehmen oder eigene Parameter eingeben. Danach wird festgelegt, welche Kennzahlengruppen im Terminal ausgegeben, welche Diagramme angezeigt und ob ein PDF-Bericht erstellt werden sollen.
+
+Unabhängig vom ausgewählten Modus wird die eigentliche Berechnung durch die Methode `BikeSimulator.run()` durchgeführt. Die Methode koordiniert die Datenaufbereitung, die Motorberechnung, die Akkusimulation und die Zusammenfassung der Ergebnisse.
+
+### 5.3 Verarbeitung der Eingaben
+
+Die Anwendung verarbeitet drei Arten von Eingaben:
+
+#### Eingaben über das Terminal
+
+Die erste Eingabe bestimmt den Betriebsmodus:
+
+- `1` startet die Parameterstudie.
+- `2` startet eine Simulation mit konkreten Werten.
+
+Bei der Einzelsimulation können die Standardwerte übernommen oder folgende Parameter einzeln eingegeben werden:
+
+- Fahrergewicht
+- Fahrradgewicht
+- effektive Stirnfläche
+- Raddurchmesser
+- Motorkonstante
+- Rollwiderstandsbeiwert
+
+Eine leere Eingabe übernimmt den jeweiligen Standardwert. Bei Dezimalzahlen werden sowohl ein Punkt als auch ein Komma akzeptiert. Das Komma wird vor der Umwandlung durch einen Punkt ersetzt.
+
+Die eingegebenen Werte werden in Fließkommazahlen umgewandelt und auf Gültigkeit geprüft. Nicht numerische oder nicht positive Werte führen zu einem `ValueError`.
+
+Bei der Auswahl von Kennzahlen und Diagrammen können mehrere Nummern durch Kommas oder Leerzeichen getrennt eingegeben werden. Außerdem sind folgende Eingaben möglich:
+
+- `a` wählt alle Einträge aus.
+- `0` wählt keine Einträge aus.
+- `q` bricht das Programm ab.
+
+Doppelte Auswahlen werden entfernt. Zahlen außerhalb des gültigen Bereichs und andere ungültige Eingaben werden abgelehnt.
+
+#### Eingaben aus der GPS-Datei
+
+Die GPS-Daten werden aus folgender Datei gelesen:
+
+```text
+data/final_project_input_data.csv
+```
+
+Die Datei muss mindestens folgende Spalten enthalten:
+
+- `lat` für den Breitengrad,
+- `lon` für den Längengrad,
+- `ele` für die Höhe,
+- `time` für den Zeitstempel,
+- `temperature` für die Temperatur.
+
+Beim Einlesen wird geprüft, ob die Datei vorhanden und nicht leer ist. Zusätzlich müssen alle benötigten Spalten vorhanden sein und gültige Werte enthalten. Für die Berechnung einer Strecke werden mindestens zwei GPS-Punkte benötigt.
+
+#### Eingaben über externe APIs
+
+Wetter- und Ortsinformationen werden aus Cache-Dateien geladen. Sind die benötigten Daten dort noch nicht vorhanden, führt das Programm eine Anfrage an die jeweilige API aus.
+
+Die Wetterdaten werden über Open-Meteo und die Ortsinformationen über Geoapify abgerufen. Anschließend werden die Ergebnisse in den Cache-Dateien gespeichert, damit sie bei späteren Simulationen nicht erneut heruntergeladen werden müssen.
+
+### 5.4 Ablauf einer vollständigen Simulation
+
+Eine vollständige Simulation läuft in folgenden Schritten ab:
+
+1. **Simulationsparameter prüfen:**  
+   Beim Erzeugen des `BikeSimulator` werden Akkukapazität, Ladezustand, Filtergröße und weitere Simulationsparameter überprüft.
+
+2. **GPS-Datei einlesen:**  
+   Der `GPSReader` liest die CSV-Datei ein und kontrolliert die benötigten Spalten und Werte.
+
+3. **Streckendaten berechnen:**  
+   Aus den GPS-Koordinaten und Höhenwerten werden die räumlichen Distanzen sowie der Auf- und Abstieg berechnet. Aus den Zeitstempeln entstehen die Zeitdifferenzen der einzelnen Streckenabschnitte.
+
+4. **Streckeninformationen ergänzen:**  
+   Das Programm erstellt eine HTML-Karte, ruft Orts- und Wetterinformationen ab und berechnet die Fahrtrichtung.
+
+5. **Fahrwerte bestimmen:**  
+   Der `RouteCalculator` berechnet Geschwindigkeit, Beschleunigung und Steigung. Zusätzlich wird für jeden Streckenabschnitt die Luftdichte bestimmt.
+
+6. **Motorwerte berechnen:**  
+   Der `Motor` berechnet die Beschleunigungs-, Steigungs-, Roll- und Luftwiderstandskräfte. Daraus werden die Motorleistung, das Drehmoment, der Motorstrom und die erforderliche Bremsleistung bestimmt.
+
+7. **Simulationskomponenten erzeugen:**  
+   Es werden ein LiPo-Akku, ein NMC-Akku, zwei Bremswiderstände und ein Rekuperationscontroller erzeugt.
+
+8. **LiPo-Akku simulieren:**  
+   Die vollständige Strecke wird Abschnitt für Abschnitt mit dem LiPo-Akku simuliert.
+
+9. **NMC-Akku simulieren:**  
+   Anschließend wird dieselbe Strecke mit denselben Motorwerten für den NMC-Akku simuliert.
+
+10. **Streckenabschnitte verarbeiten:**  
+    Für jeden Abschnitt wird entschieden, ob Antriebs- oder Bremsleistung benötigt wird. Im Antriebsfall wird der Akku entladen. Im Bremsfall wird die verfügbare Energie auf Akku, Bremswiderstand und mechanische Bremse verteilt.
+
+11. **Zustände aktualisieren:**  
+    Nach jedem Abschnitt werden Ladezustand, Spannung, Innenwiderstand und Temperatur des Akkus sowie die Temperatur des Bremswiderstands aktualisiert.
+
+12. **Ergebnisse zusammenfassen:**  
+    Nach beiden Akkusimulationen werden Kennzahlen wie Gesamtstrecke, Energieverbrauch, Endladezustand, Temperaturen und zurückgewonnene Bremsenergie berechnet.
+
+13. **Ergebnisse ausgeben:**  
+    `main.py` gibt die ausgewählten Kennzahlen im Terminal aus. Optional werden ein PDF-Bericht und die ausgewählten Diagramme erstellt.
+
+Falls der Benutzer das Programm mit `q` abbricht, wird eine `UserCancelledError` ausgelöst und das Programm kontrolliert beendet. Datei-, Eingabe- und unerwartete Programmfehler werden abgefangen und über das Logging ausgegeben.
