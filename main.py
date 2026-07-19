@@ -440,7 +440,6 @@ def main() -> int:
             )
 
             results = simulator.run()
-            print(results["battery"])
 
             logger.info(
                 "Simulation erfolgreich abgeschlossen"
