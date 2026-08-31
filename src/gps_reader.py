@@ -81,7 +81,7 @@ class GPSReader:
 
         return df
         
-    def calculate_distances(self) -> np.array:
+    def calculate_distances(self) -> np.ndarray:
         """
         Berechnet die 3D-Distanz zwischen
         aufeinanderfolgenden GPS-Punkten.

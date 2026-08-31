@@ -30,7 +30,7 @@ class GPSMap:
 
     # -- Karte bauen --------------------------------------------------------
 
-    def _construct_map(self, with_line:bool=True) -> folium.map:
+    def _construct_map(self, with_line:bool=True) -> folium.Map:
         if not self.points:
             raise ValueError("Es wurden keine Koordinaten hinzugefuegt.")
 
@@ -61,7 +61,7 @@ class GPSMap:
         map.fit_bounds(latlon)
         return map
 
-    def save(self,with_line=True, filename="karte.html", folder="outputs") -> None:
+    def save(self,with_line:bool=True, filename:str="karte.html", folder:str="outputs") -> None:
         map = self._construct_map(with_line=with_line)
 
         # Ordner relativ zum Script-Speicherort aufloesen und anlegen

@@ -15,7 +15,7 @@ class TripWeather:
     VARS = ["temperature_2m", "surface_pressure", "wind_speed_10m",
             "wind_direction_10m", "wind_gusts_10m", "precipitation"]  # xm ist Messhöhe über Boden
  
-    def __init__(self, df:pd.df, lat="lat", lon="lon", time="time"):
+    def __init__(self, df:pd.DataFrame, lat="lat", lon="lon", time="time"):
         d = df.rename(columns={lat: "lat", lon: "lon"}).copy()
         d["time"] = (pd.to_datetime(d[time], utc=True)      # ...Z -> UTC
                        .dt.tz_convert("Europe/Vienna")      # -> Lokalzeit
@@ -58,7 +58,7 @@ class TripWeather:
             # Programm abbrechen, da ohne Wetterdaten keine weiteren Schritte möglich sind
             raise SystemExit(1) from e
  
-    # ---- Cache laden, nur Fehlendes fetchen, pro Trackpunkt rekonstruieren ----
+    #Cache laden, nur Fehlendes fetchen, pro Trackpunkt rekonstruieren 
     def get_weather(self) -> pd.DataFrame:
         # Cache laden
         cache = json.loads(CACHE.read_text(encoding="utf-8")) if CACHE.exists() else {}

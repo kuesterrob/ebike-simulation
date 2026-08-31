@@ -1265,7 +1265,7 @@ class BikeSimulator:
         lipo_data: dict,
         nmc_data: dict,
         metrics: dict,
-        places: np.array,
+        places: np.ndarray,
     ) -> dict:
         """
         Erstellt die vollständige Ergebnisstruktur

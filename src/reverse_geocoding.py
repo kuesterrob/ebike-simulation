@@ -12,11 +12,11 @@ class Reverse_Geocoder():
 
     #Vor dem ausführen api key festlegen im terminal mit export GEOAPIFY_API_KEY="key"
     #Wir nutzen die Geoapify API im klar Text weil wir einen kostenlosen Account nutzen. Für die Nutzung in einem Produktivsystem sollte der Key verschlüsselt werden.
-    def __init__(self,df: pd.df, api_key = "58a1b553653b4401b914c1ed967d6642"):
+    def __init__(self,df: pd.DataFrame, api_key:str = "58a1b553653b4401b914c1ed967d6642"):
         self.df = df
         self.api_key = api_key
 
-    def geoapify_bulk(self,coords:pd.df) -> json:
+    def geoapify_bulk(self,coords:pd.DataFrame) -> json:
         try:
             """POST coords to Geoapify batch, poll until done, return one dict per coord."""
             resp = requests.post(
@@ -37,7 +37,7 @@ class Reverse_Geocoder():
             #Programm abbrechen, da ohne Geocoding keine weiteren Schritte möglich sind
             raise SystemExit(1) from e
  
-    def get_results(self) -> pd.df:
+    def get_results(self) -> pd.DataFrame:
         #Chache laden
         cache = json.loads(CACHE.read_text(encoding="utf-8")) if CACHE.exists() else {}
         

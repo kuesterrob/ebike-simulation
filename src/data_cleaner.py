@@ -1,7 +1,6 @@
 from itertools import groupby
 
-# Ortsteile / Weiler, die die API uneinheitlich statt der Gemeinde liefert.
-# Mariastein ist bewusst NICHT enthalten: eigene Gemeinde, keine Aggregationsstufe.
+# Ortsteile, die die API uneinheitlich statt der Gemeinde liefert.
 ALIASES = {
     "Endach": "Kufstein",
     "Unterlangkampfen": "Langkampfen",
