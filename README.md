@@ -260,20 +260,20 @@ classDiagram
             -_create_simulation_components(initial_temperature_c: float) dict
             -_simulate_battery_variant(battery_name: str, battery: BatteryPack, brake_resistor: BrakeResistor, regenerative_controller: RegenerativeBrakingController, motor_data: dict, route_data: dict) dict
             -_calculate_metrics(route_data: dict, motor_data: dict, lipo_data: dict, nmc_data: dict) dict
-            -_build_results(route_data: dict, motor_data: dict, lipo_data: dict, nmc_data: dict, metrics: dict, places: np.array) dict
+            -_build_results(route_data: dict, motor_data: dict, lipo_data: dict, nmc_data: dict, metrics: dict, places: np.ndarray) dict
             +run() dict
         }
     }
 
     namespace Streckenverarbeitung {
         class GPSReader {
-            -df : pd.df
-            -distances : npndarray 
+            -df : pd.DataFrame
+            -distances : np.ndarray 
             -total_3d : float
             -climb : float
             -descent : float
             +load_file(file_path: Path) pd.DataFrame
-            +calculate_distances() np.array
+            +calculate_distances() np.ndarray
             +get_stats() dict
             +haversine(lat1: float, lon1: float, lat2: float, lon2: float)
         }
@@ -298,7 +298,7 @@ classDiagram
             -tiles : str
             +add_points(lat: str, lon: str) None
             +clear() None
-            -_construct_map(with_line: bool) folium.map
+            -_construct_map(with_line: bool) folium.Map
             +save() None
         }
 
@@ -309,17 +309,17 @@ classDiagram
 
     namespace Datenanreicherung {
         class TripWeather {
-            -df : pd.df
+            -df : pd.DataFrame
             -_key(la: float, lo: float, t: float) str
             -_fetch(cells: list)
             +get_weather() pd.DataFrame
         }
 
         class Reverse_Geocoder {
-            -df : pd.df
+            -df : pd.DataFrame
             -api_key : str
-            +geoapify_bulk(coords: pd.df) json
-            +get_results() pd.df
+            +geoapify_bulk(coords: pd.DataFrame) json
+            +get_results() pd.DataFrame
         }
     }
 
