@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 class GPSMap:
 
-    def __init__(self, lats: list[str], lons: list[str], line_color: str="blue",tiles: str ="CartoDB positron"):
+    def __init__(self, lats: list[str], lons: list[str], line_color: str="blue",tiles: str ="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"):
         self.points = []
         self.line_color = line_color
         self.tiles = tiles
@@ -39,7 +39,19 @@ class GPSMap:
         # Karte auf den Durchschnitt aller Punkte zentrieren
         avg_lat = sum(lat for lat, _ in latlon) / len(latlon)
         avg_lon = sum(lon for _, lon in latlon) / len(latlon)
-        map = folium.Map(location=[avg_lat, avg_lon], zoom_start=7,tiles = self.tiles)
+        map = folium.Map(location=[avg_lat, avg_lon], zoom_start=7,tiles = self.tiles,attr="Esri")
+
+        # basis Layer (hellgrau)
+        folium.TileLayer(
+            tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+            attr="Esri", name="Light Gray", overlay=False,
+        ).add_to(map)
+
+        # labels hinzufügen (Ortnamen, usw.)
+        folium.TileLayer(
+            tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
+            attr="Esri", name="Labels", overlay=True, control=False,
+        ).add_to(map)
 
         #Start/Ziel hinzufügen
         reader = GPSReader()
