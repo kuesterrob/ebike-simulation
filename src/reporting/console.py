@@ -294,12 +294,17 @@ def print_selected_metrics(
     for line in lines:
         print(line)
 
-def print_vergleich(df: pd.DataFrame, spalte: str = "lipo_soc_percent") -> None:
+def print_vergleich(df: pd.DataFrame, spalte: str = "lipo_soc_percent", spalte2: str = "nmc_soc_percent") -> None:
     """Kompakte Konsolenausgabe pro Fall."""
+    print(f"{'Kategorie':<10}{'':<16}{'LiPo Batterie':>18}{'Δ pp':>10}{'(Δ %)':>13}{'NMC Batterie':>22}{'Δ pp':>10}{'(Δ %)':>13}")
     for name, r in df.iterrows():
         print(
             f"{name:<20} {r['kategorie']:<10} "
             f"{r[spalte]:6.2f} %  "
             f"Δ {r[f'{spalte}_delta_pp']:+7.2f} pp  "
-            f"({r[f'{spalte}_delta_rel']:+7.1f} %)"
+            f"({r[f'{spalte}_delta_rel']:+7.1f} %)"     
+            f"{'':<10}"
+            f"{r[spalte2]:6.2f} %  "
+            f"Δ {r[f'{spalte2}_delta_pp']:+7.2f} pp  "
+            f"({r[f'{spalte2}_delta_rel']:+7.1f} %)"
         )
