@@ -32,7 +32,9 @@ Die Ergebnisse können im Terminal ausgegeben, als Diagramme dargestellt und in 
 
 ### 2.1 Voraussetzungen
 
-Zum Ausführen des Projekts werden Python 3.9 oder neuer sowie Git benötigt. Für das erstmalige Abrufen von Wetter- und Ortsdaten kann außerdem eine Internetverbindung erforderlich sein.
+Zum Ausführen des Projekts werden Python 3.13.7 oder neuer sowie Git benötigt. Das Programm wurde mit Python 3.13.7 und Python 3.14.6 getestet. 
+Die Verwendung anderer Python-Versionen ist grundsätzlich möglich, eine vollständige Kompatibilität kann jedoch nicht garantiert werden.
+Für das erstmalige Abrufen von Wetter- und Ortsdaten kann außerdem eine Internetverbindung erforderlich sein.
 
 Die benötigten Python-Bibliotheken werden zentral in der Datei `requirements.txt` verwaltet.
 
