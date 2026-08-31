@@ -44,10 +44,6 @@ DEFAULTS = {name: default for name, _, default, _ in PARAMETERS}
 
 CASES = {
     "basis":              ("Referenz",   {}),
-    "pendler":            ("Archetyp",   dict(rider_mass_kg=80, bike_mass_kg=22, drag_area_m2=0.60, wheel_diameter_inch=28, motor_constant_nm_per_a=1.5, rolling_resistance_coefficient=0.0070)),
-    "lastenrad":          ("Archetyp",   dict(rider_mass_kg=80, bike_mass_kg=45, drag_area_m2=0.75, wheel_diameter_inch=20, motor_constant_nm_per_a=2.2, rolling_resistance_coefficient=0.0090)),
-    "sportlich":          ("Archetyp",   dict(rider_mass_kg=70, bike_mass_kg=10, drag_area_m2=0.38, wheel_diameter_inch=28, motor_constant_nm_per_a=1.2, rolling_resistance_coefficient=0.0040)),
-    "mtb_gelände":       ("Archetyp",   dict(rider_mass_kg=85, bike_mass_kg=24, drag_area_m2=0.65, wheel_diameter_inch=27.5, motor_constant_nm_per_a=1.8, rolling_resistance_coefficient=0.0140)),
     "masse_leicht":       ("Masse",      dict(rider_mass_kg=55)),
     "masse_schwer":       ("Masse",      dict(rider_mass_kg=100)),
     "masse_zuladung":     ("Masse",      dict(bike_mass_kg=25)),
@@ -336,7 +332,7 @@ def main() -> int:
     
     if parameter_or_concrete == "1":
         try:
-            #Simuliert werden 20 phsikalisch sinnvolle Parametersätze
+            #Simuliert werden 16 phsikalisch sinnvolle Parametersätze
 
             logger.info(
                 "E-Bike-Simulation gestartet"
