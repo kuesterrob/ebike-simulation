@@ -2,7 +2,7 @@
 Formatierung und Ausgabe der Simulationsergebnisse
 im Terminal.
 """
-
+import pandas as pd
 
 def format_route_metrics(
     metrics: dict,
